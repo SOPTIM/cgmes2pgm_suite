@@ -1,0 +1,12 @@
+bidict~=0.23.1
+numpy~=2.2.0
+pandas~=2.2.0
+power-grid-model~=1.10.49
+power-grid-model-io~=1.2.101
+SPARQLWrapper~=2.0.0
+XlsxWriter ~= 3.2.0
+PyYAML ~= 6.0.1
+StrEnum ~= 0.4.15
+black==24.10.0
+pre_commit==4.0.0
+cgmes2pgm_converter~=0.1.0
