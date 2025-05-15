@@ -9,8 +9,8 @@ It focuses on performing the state estimation on CGMES datasets.
 - Debug state estimation by manipulating datasets (e.g., subnet splitting)
 - Configure conversion and state estimation via a configuration file
 - Simulate measurements:
-  - when real measurements are not provided via an Operation-Profile, but a StateVariable (SV) Profile is available
-  - generates an Operation-Profile with distorted measurements based on the SV-Profile
+  - when real measurements are not provided via an Operation Profile, but a State Variable (SV) Profile is available
+  - generates an Operation Profile with distorted measurements based on the SV Profile
 
 ## Installation
 
