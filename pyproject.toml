@@ -1,0 +1,47 @@
+[project]
+name = "cgmes2pgm_suite"
+version = "0.1.0"
+description = "Additional tools for cgmes2pgm_converter to integrate PowerGridModel with the Common Grid Model Exchange Standard (CGMES)"
+authors = [
+    { name = "Lars Friedrich, Eduard Fried, Udo Schmitz", email = "powergridmodel@soptim.de" },
+]
+
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+keywords = ["cgmes", "pgm", "State Estimation", "Power Grid Model"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+]
+
+requires-python = ">=3.10.12"
+dynamic = ["dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/SOPTIM/cgmes2pgm_suite"
+Repository = "https://github.com/SOPTIM/cgmes2pgm_suite"
+Issues = "https://github.com/SOPTIM/cgmes2pgm_suite/issues"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools", "wheel"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.mypy]
+disable_error_code = "import-untyped"
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = "C0114, C0115, C0116"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.isort]
+profile = "black"

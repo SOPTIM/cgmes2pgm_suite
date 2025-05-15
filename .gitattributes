@@ -1,0 +1,12 @@
+*.sh text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.ini text eol=lf
+*.json text eol=lf
+*.puml text eol=lf
+*.git* text eol=lf
+*.toml text eol=lf
+tdb* text eol=lf
+Docker* text eol=lf

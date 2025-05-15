@@ -1,0 +1,27 @@
+# Example configuration file for measurement ranges
+Seed: 1234
+VoltageRangesByNominalVoltage:
+  Measurement:
+    applyRange: true # if set to false, sv values are used directly
+    zeroThreshold: 0.5 # (kV) if the value is below this threshold, measurement is set to 0
+  Default:
+    Min: 0.95 # cim:Analog.minValue = 0.95 * svValue
+    Max: 1.05
+    Sigma: 5 # Default sigma
+  Discrete: # in kV for node nominalVoltage in kV
+    - { Min: 0, Max: 110, Sigma: 1 } # 0-110 kV: Sigma = 2 (kV)
+    - { Min: 110, Max: 220, Sigma: 3 }
+    - { Min: 220, Max: 420, Sigma: 5 }
+
+PowerRangesByNominalVoltage:
+  Measurement:
+    applyRange: true
+    zeroThreshold: 0.5 # MW
+  Default:
+    Min: 0.95
+    Max: 1.05
+    Sigma: 10
+  Discrete: # Sigma is set based on its voltage level in kV
+    - { Min: 0, Max: 110, Sigma: 1 } # 0-110 kV: Sigma = 2 (MW)
+    - { Min: 110, Max: 220, Sigma: 5 }
+    - { Min: 220, Max: 420, Sigma: 10 }
