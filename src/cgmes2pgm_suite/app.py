@@ -27,6 +27,7 @@ from cgmes2pgm_suite.export import (
     NodeBalanceExport,
     ResultTextExport,
     StesResultExcelExport,
+    SvProfileBuilder,
     TextExport,
 )
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
@@ -150,6 +151,7 @@ def _export_result_data(
     )
 
     exporter = ResultTextExport(os.path.join(output_folder, "pgm_result.txt"), result)
+    exporter.export()
 
     exporter = TextExport(
         os.path.join(output_folder, "pgm_result_full.txt"),
@@ -166,3 +168,10 @@ def _export_result_data(
         sv_comparison=True,
     )
     exporter.export()
+
+    sv_profile_builder = SvProfileBuilder(
+        config.dataset,
+        result,
+        f"{config.dataset.base_url}/out",
+    )
+    sv_profile_builder.build(True)

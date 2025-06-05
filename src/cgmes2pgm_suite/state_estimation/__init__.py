@@ -13,5 +13,5 @@
 # limitations under the License.
 
 from .options import PgmCalculationParameters, StesOptions
-from .results import StateEstimationResult
+from .results import PgmDataset, StateEstimationResult
 from .wrapper import StateEstimationWrapper
