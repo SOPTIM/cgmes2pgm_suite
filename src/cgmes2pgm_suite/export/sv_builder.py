@@ -19,7 +19,12 @@ from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
-from cgmes2pgm_converter.common import CIM_ID_OBJ, CgmesDataset
+from cgmes2pgm_converter.common import (
+    APPLIANCE_COMPONENTS,
+    BRANCH_COMPONENTS,
+    CIM_ID_OBJ,
+    CgmesDataset,
+)
 from power_grid_model import ComponentType
 
 from cgmes2pgm_suite.state_estimation import PgmDataset
@@ -159,10 +164,9 @@ class SvProfileBuilder:
         # drop rows without TopologicalNode and log node ids w/o TopologicalNode
         missing_toponode = df[df[f"{CLS}.TopologicalNode"].isnull()]["_pgm_id"].tolist()
         if missing_toponode:
-            print(f"Nodes without TopologicalNode: {missing_toponode}")
+            logging.warning("Nodes without TopologicalNode: %s", missing_toponode)
         df = df[df[f"{CLS}.TopologicalNode"].notnull()]
 
-        # drop _pgm_id column
         df.drop(columns=["_pgm_id"], inplace=True)
 
         self.cgmes_dataset.insert_df(
@@ -173,7 +177,90 @@ class SvProfileBuilder:
 
     def _write_power_flow(self):
         """Create SvPowerFlow objects"""
-        pass
+
+        if not self.pgm_dataset.result_data:
+            return
+
+        for type_ in BRANCH_COMPONENTS:
+            if type_ in self.pgm_dataset.result_data:
+                self._add_branch_flows(type_)
+
+        for type_ in APPLIANCE_COMPONENTS:
+            if type_ in self.pgm_dataset.result_data:
+                self._add_appliance_flows(type_)
+
+    def _add_branch_flows(self, type_: ComponentType):
+        """Add generic branch flows to the DataFrame."""
+
+        if not self.pgm_dataset.result_data:
+            return
+
+        CLS = "cim:SvPowerFlow"
+
+        result_data = self.pgm_dataset.result_data[type_]
+
+        for direction in ["from", "to"]:
+
+            df = pd.DataFrame()
+            df["_pgm_id"] = result_data["id"]
+            df[f"{CLS}.p"] = result_data[f"p_{direction}"] / 1e6
+            df[f"{CLS}.q"] = result_data[f"q_{direction}"] / 1e6
+            df[f"{CIM_ID_OBJ}.mRID"] = [f'"{uuid.uuid4()}"' for _ in range(len(df))]
+
+            terminal_number = 1 if direction == "from" else 2
+            terminal_key = f"_term{terminal_number}"
+            df[f"{CLS}.Terminal"] = df["_pgm_id"].apply(
+                lambda pid, terminal_key=terminal_key: self._get_terminal_from_extra_info(
+                    pid, terminal_key
+                )
+            )
+
+            missing_term = df[df[f"{CLS}.Terminal"].isnull()]["_pgm_id"].tolist()
+            if missing_term:
+                logging.warning(
+                    "Branches without Terminal (%s): %s", direction, missing_term
+                )
+            df.dropna(subset=[f"{CLS}.Terminal"], inplace=True)
+            df.drop(columns=["_pgm_id"], inplace=True)
+
+            self.cgmes_dataset.insert_df(
+                df,
+                self.target_graph,
+                include_mrid=True,
+            )
+
+    def _add_appliance_flows(self, type_: ComponentType):
+        """Add appliance flows to the DataFrame."""
+
+        if not self.pgm_dataset.result_data:
+            return
+
+        CLS = "cim:SvPowerFlow"
+
+        df = pd.DataFrame()
+        result_data = self.pgm_dataset.result_data[type_]
+
+        df["_pgm_id"] = result_data["id"]
+        df[f"{CLS}.p"] = result_data["p"] / 1e6
+        df[f"{CLS}.q"] = result_data["q"] / 1e6
+        df[f"{CIM_ID_OBJ}.mRID"] = [f'"{uuid.uuid4()}"' for _ in range(len(df))]
+
+        df[f"{CLS}.Terminal"] = df["_pgm_id"].apply(
+            lambda pid: self._get_terminal_from_extra_info(pid, "_terminal")
+        )
+
+        missing_term_from = df[df[f"{CLS}.Terminal"].isnull()]["_pgm_id"].tolist()
+        if missing_term_from:
+            logging.warning("Appliance without Terminal: %s", missing_term_from)
+
+        df.dropna(subset=[f"{CLS}.Terminal"], inplace=True)
+        df.drop(columns=["_pgm_id"], inplace=True)
+
+        self.cgmes_dataset.insert_df(
+            df,
+            self.target_graph,
+            include_mrid=True,
+        )
 
     def _write_model_info(self):
         """Write model information to the CGMES dataset."""
@@ -181,3 +268,7 @@ class SvProfileBuilder:
         self.cgmes_dataset.insert_triples(
             self.model_info.to_triples(), self.target_graph
         )
+
+    def _get_terminal_from_extra_info(self, pgm_id, terminal_key):
+        terminal_iri = self.pgm_dataset.extra_info.get(pgm_id, {}).get(terminal_key)
+        return f"<{terminal_iri}>" if terminal_iri else None
