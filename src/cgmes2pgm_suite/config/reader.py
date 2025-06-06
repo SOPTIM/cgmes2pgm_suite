@@ -188,6 +188,7 @@ class ConfigReader:
             {
                 Profile.OP: base_url + graph_data.get("OP"),
                 Profile.MEAS: base_url + graph_data.get("MEAS"),
+                Profile.SV: base_url + graph_data.get("SV"),
             }
             if graph_data
             else None

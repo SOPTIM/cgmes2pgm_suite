@@ -18,7 +18,7 @@ import os
 import sys
 
 from cgmes2pgm_converter import CgmesToPgmConverter
-from cgmes2pgm_converter.common import Timer, Topology
+from cgmes2pgm_converter.common import Profile, Timer, Topology
 from power_grid_model_io.converters import PgmJsonConverter
 
 from cgmes2pgm_suite.common import NodeBalance
@@ -172,6 +172,6 @@ def _export_result_data(
     sv_profile_builder = SvProfileBuilder(
         config.dataset,
         result,
-        f"{config.dataset.base_url}/out",
+        target_graph=config.dataset.graphs[Profile.SV],
     )
     sv_profile_builder.build(True)

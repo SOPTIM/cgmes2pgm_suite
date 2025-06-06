@@ -8,8 +8,9 @@ OutputFolder: "../../out/dataset_name"
 DataSource:
   BaseUrl: "http://localhost:3030/dataset_name" # Change to your own URL
   Graphs:
-    OP: "/op" # If not provided measurements are read from the default graph
-    MEAS: "/meas"
+    OP: "/op" # Target graph for MeasurementSimulation
+    MEAS: "/meas" # Target graph for MeasurementSimulation
+    SV: "/sv" # Target graph for SV-Profile Export
   CIM-Namespace: "http://iec.ch/TC57/2013/CIM-schema-cim16#"
 
 Steps:
