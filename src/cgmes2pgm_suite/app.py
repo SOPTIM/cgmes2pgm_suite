@@ -141,6 +141,9 @@ def _export_result_data(
     result: StateEstimationResult, output_folder: str, config: SuiteConfiguration
 ):
 
+    if not result.result_data:
+        return
+
     topo = Topology(result.input_data, result.extra_info, result.result_data)
     noba = NodeBalance(topo)
 

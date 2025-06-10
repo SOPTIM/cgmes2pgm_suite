@@ -40,7 +40,7 @@ class PgmDataset:
     input_data: SingleDataset
     result_data: Optional[SingleDataset] = None
     extra_info: ExtraInfo = field(default_factory=dict)
-    data: Optional[SingleDataset] = field(init=False)
+    data: SingleDataset = field(init=False)
 
     def __post_init__(self):
         self.data = (

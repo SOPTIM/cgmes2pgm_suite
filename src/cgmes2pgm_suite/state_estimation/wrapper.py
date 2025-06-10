@@ -14,7 +14,6 @@
 
 import logging
 
-import numpy as np
 from cgmes2pgm_converter.common import Timer, Topology
 from power_grid_model import (
     CalculationMethod,
@@ -22,6 +21,7 @@ from power_grid_model import (
     ComponentType,
     PowerGridModel,
 )
+from power_grid_model.data_types import SingleDataset
 from power_grid_model.errors import IterationDiverge, SparseMatrixError
 from power_grid_model.validation import validate_input_data
 from power_grid_model_io.data_types import ExtraInfo
@@ -34,16 +34,16 @@ from .results import StateEstimationResult
 class StateEstimationWrapper:
     def __init__(
         self,
-        input_data: dict[str, np.ndarray],
+        input_data: SingleDataset,
         extra_info: ExtraInfo,
-        stes_options: StesOptions = None,
+        stes_options: StesOptions | None = None,
         network_name: str = "network",
     ):
         self.input_data = input_data
         self.extra_info = extra_info
         self.stes_options = stes_options or StesOptions()
         self.network_name = network_name
-        self._model: PowerGridModel = None
+        self._model: PowerGridModel | None = None
         self._results: list[StateEstimationResult] = []
 
         self._topology = Topology(self.input_data, self.extra_info)
@@ -125,6 +125,10 @@ class StateEstimationWrapper:
                 )
 
     def _run_pgm(self, run_name: str):
+
+        if self._model is None:
+            raise ValueError("Unexpected Error: PowerGridModel is not initialized.")
+
         params = self.stes_options.pgm_parameters
         try:
             with Timer("State Estimation", loglevel=logging.INFO):
