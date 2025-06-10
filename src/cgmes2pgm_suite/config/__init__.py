@@ -12,4 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .reader import ConfigReader, Steps
+from .config import LoggingConfiguration, Steps, SuiteConfiguration
+from .reader import ConfigReader

@@ -16,7 +16,7 @@ import logging
 
 from cgmes2pgm_converter.common import CgmesDataset, Profile, Timer
 
-from .meas_ranges import MeasurementRangeSet
+from .meas_ranges import MeasurementSimulationConfiguration
 from .power_measurement_builder import PowerMeasurementBuilder
 from .value_source_builder import ValueSourceBuilder
 from .voltage_measurement_builder import VoltageMeasurementBuilder
@@ -32,8 +32,7 @@ class MeasurementBuilder:
     def __init__(
         self,
         datasource: CgmesDataset,
-        v_ranges: MeasurementRangeSet,
-        pq_ranges: MeasurementRangeSet,
+        config: MeasurementSimulationConfiguration,
     ):
 
         if Profile.OP not in datasource.graphs:
@@ -43,8 +42,7 @@ class MeasurementBuilder:
             raise ValueError("Requires graph name for the MEAS profile")
 
         self._datasource = datasource
-        self._v_ranges = v_ranges
-        self._pq_ranges = pq_ranges
+        self._config = config
 
     def build_from_sv(self):
 
@@ -57,7 +55,7 @@ class MeasurementBuilder:
 
         builder = VoltageMeasurementBuilder(
             self._datasource,
-            self._v_ranges,
+            self._config.voltage_ranges,
             sources,
         )
         with Timer("Building Voltage Measurements", loglevel=logging.INFO):
@@ -65,7 +63,7 @@ class MeasurementBuilder:
 
         builder = PowerMeasurementBuilder(
             self._datasource,
-            self._pq_ranges,
+            self._config.power_ranges,
             sources,
         )
         with Timer("Building Power Measurements", loglevel=logging.INFO):
