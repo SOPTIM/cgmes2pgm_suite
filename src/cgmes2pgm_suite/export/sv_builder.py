@@ -16,6 +16,7 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -24,6 +25,7 @@ from cgmes2pgm_converter.common import (
     BRANCH_COMPONENTS,
     CIM_ID_OBJ,
     CgmesDataset,
+    Topology,
 )
 from power_grid_model import ComponentType
 
@@ -94,6 +96,42 @@ class CgmesFullModel:
         ]
 
 
+@dataclass
+class TopologicalIsland:
+    """Wrapper for the CIM TopologicalIsland object."""
+
+    mrid: str
+    iri: str
+    name: str
+    topological_nodes: list[str]
+    angle_ref_node: Optional[str]
+
+    def to_triples(self) -> list[tuple[str, str, str]]:
+        """
+        Convert the TopologicalIsland instance to RDF triples.
+
+        Returns:
+            list[tuple[str, str, str]]: A list of RDF triples representing the TopologicalIsland.
+        """
+        CLS = "cim:TopologicalIsland"
+        triples = [
+            (self.iri, "rdf:type", "cim:TopologicalIsland"),
+            (self.iri, "cim:IdentifiedObject.mRID", f'"{self.mrid}"'),
+            (self.iri, "cim:IdentifiedObject.name", f'"{self.name}"'),
+        ]
+
+        if self.angle_ref_node is not None:
+            triples.append(
+                (self.iri, f"{CLS}.angleRefTopologicalNode", f"<{self.angle_ref_node}>")
+            )
+
+        triples += [
+            (self.iri, f"{CLS}.TopologicalNodes", f"<{node}>")
+            for node in self.topological_nodes
+        ]
+        return triples
+
+
 class SvProfileBuilder:
     """
     Generates the state variable (SV) profile for a provided power flow or state estimation result.
@@ -133,6 +171,7 @@ class SvProfileBuilder:
         self._write_model_info()
         self._write_sv_voltage()
         self._write_power_flow()
+        self._add_topological_islands()
 
     def _write_sv_voltage(self):
         """Create SvVoltage objects"""
@@ -146,6 +185,7 @@ class SvProfileBuilder:
 
         df = pd.DataFrame()
         df["_pgm_id"] = node_results["id"]
+        df["rdf:type"] = CLS
 
         df[f"{CLS}.v"] = node_results["u"] / 1e3
         df[f"{CLS}.angle"] = np.rad2deg(node_results["u_angle"])
@@ -203,6 +243,7 @@ class SvProfileBuilder:
 
             df = pd.DataFrame()
             df["_pgm_id"] = result_data["id"]
+            df["rdf:type"] = CLS
             df[f"{CLS}.p"] = result_data[f"p_{direction}"] / 1e6
             df[f"{CLS}.q"] = result_data[f"q_{direction}"] / 1e6
             df[f"{CIM_ID_OBJ}.mRID"] = [f'"{uuid.uuid4()}"' for _ in range(len(df))]
@@ -262,6 +303,74 @@ class SvProfileBuilder:
             include_mrid=True,
         )
 
+    def _add_topological_islands(self):
+
+        subnets = self._get_islands()
+
+        for subnet in subnets:
+            self.cgmes_dataset.insert_triples(subnet.to_triples(), self.target_graph)
+
+    def _get_islands(self) -> list[TopologicalIsland]:
+        topology = Topology(
+            self.pgm_dataset.input_data,
+            self.pgm_dataset.extra_info,
+            self.pgm_dataset.result_data,
+        )
+
+        nodes = topology.get_nodes()
+        nodes_per_subnet: dict[str, list] = {}
+        ref_node_per_subnet: dict[str, str | None] = {}
+
+        for node in nodes:
+            node_mrid = node["_extra"]["_mrid"]
+            subnet_name = node["_subnet"]
+
+            if subnet_name not in nodes_per_subnet:
+                nodes_per_subnet[subnet_name] = []
+            nodes_per_subnet[subnet_name].append(node_mrid)
+
+            if self._has_active_source(node, topology):
+                # CIM only allows one source per subnet.
+                # If there are multiple nodes with active sources, no angleRef node is set.
+                if subnet_name in ref_node_per_subnet:
+                    ref_node_per_subnet[subnet_name] = None
+                    continue
+
+                ref_node_per_subnet[subnet_name] = node["_extra"]["_mrid"]
+
+        return self._create_topological_islands(nodes_per_subnet, ref_node_per_subnet)
+
+    def _create_topological_islands(
+        self,
+        nodes_per_subnet: dict[str, list],
+        ref_node_per_subnet: dict[str, str | None],
+    ) -> list[TopologicalIsland]:
+        islands = []
+        for subnet_name, node_mrids in nodes_per_subnet.items():
+            mrid = str(uuid.uuid4())
+            islands.append(
+                TopologicalIsland(
+                    mrid=mrid,
+                    iri=self.cgmes_dataset.mrid_to_uri(mrid),
+                    name=subnet_name,
+                    topological_nodes=node_mrids,
+                    angle_ref_node=ref_node_per_subnet.get(subnet_name, None),
+                )
+            )
+        return islands
+
+    def _has_active_source(
+        self, node: dict[str | ComponentType, Any], topology: Topology
+    ) -> bool:
+        """Check if a node has one or multiple active sources."""
+
+        sources = node.get(ComponentType.source, [])
+        for source_id in sources:
+            source = topology[source_id].get(ComponentType.source, {})
+            if source["status"]:
+                return True
+        return False
+
     def _write_model_info(self):
         """Write model information to the CGMES dataset."""
 
@@ -270,5 +379,6 @@ class SvProfileBuilder:
         )
 
     def _get_terminal_from_extra_info(self, pgm_id, terminal_key):
+        """Get the terminal IRI from the extra info of the PGM dataset."""
         terminal_iri = self.pgm_dataset.extra_info.get(pgm_id, {}).get(terminal_key)
         return f"<{terminal_iri}>" if terminal_iri else None
