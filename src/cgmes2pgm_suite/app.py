@@ -171,6 +171,10 @@ def _export_result_data(
     )
     exporter.export()
 
+    if Profile.SV not in config.dataset.graphs:
+        logging.warning("No SV profile url defined, skipping SV profile export")
+        return
+
     sv_profile_builder = SvProfileBuilder(
         config.dataset,
         result,

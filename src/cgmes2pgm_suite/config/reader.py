@@ -161,7 +161,7 @@ class ConfigReader:
 
     def _read_dataset(self) -> CgmesDataset:
         source_data = self._config["DataSource"]
-        graph_data: dict = source_data.get("Graphs", None)
+        graph_data: dict = source_data.get("Graphs", {})
 
         base_url = source_data["BaseUrl"]
         if source_data.get("Dataset"):
@@ -169,15 +169,10 @@ class ConfigReader:
                 base_url += "/"
             base_url += source_data["Dataset"]
 
-        graphs = (
-            {
-                Profile.OP: base_url + graph_data.get("OP", "/op"),
-                Profile.MEAS: base_url + graph_data.get("MEAS", "/meas"),
-                Profile.SV: base_url + graph_data.get("SV", "/sv"),
-            }
-            if graph_data
-            else {}
-        )
+        graphs = {}
+        for profile in Profile:
+            if graph_data.get(profile):
+                graphs[profile] = base_url + graph_data.get(profile)
 
         return CgmesDataset(
             base_url=base_url,
