@@ -6,6 +6,7 @@ It focuses on performing the state estimation on CGMES datasets.
 ## Features
 
 - Human readable exports of PGM Datasets in TXT and Excel
+- Create SV-Profile from PGM Results
 - Debug state estimation by manipulating datasets (e.g., subnet splitting)
 - Configure conversion and state estimation via a configuration file
 - Simulate measurements:

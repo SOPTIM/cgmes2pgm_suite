@@ -1,5 +1,5 @@
 #
-# Example Configuration for `ConfigReader`
+# Example Configuration for `SuiteConfigReader`
 #
 
 Name: "dataset_name"
@@ -18,7 +18,7 @@ Steps:
   Stes: true
 
 MeasurementSimulation:
-  Ranges: "../meas_ranges.yaml"
+  Ranges: "./meas_ranges.yaml"
 
 Converter:
   onlyTopoIsland: false # convert only elements in a topological island
