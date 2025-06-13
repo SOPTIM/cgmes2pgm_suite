@@ -48,7 +48,7 @@ from .config import LoggingConfiguration, Steps, SuiteConfiguration
 LOG_FORMAT = "%(levelname)-8s :: %(message)s"
 
 
-class ConfigReader:
+class SuiteConfigReader:
     """
     Class to read and parse configuration files.
     """
@@ -114,7 +114,6 @@ class ConfigReader:
         """
         Returns the measurement simulation ranges.
         """
-
         measurement_simulation_path = self._config.get("MeasurementSimulation", {}).get(
             "Ranges", None
         )
@@ -125,22 +124,7 @@ class ConfigReader:
                 os.path.dirname(self._path), measurement_simulation_path
             )
 
-        with open(measurement_simulation_path, "r", encoding="UTF-8") as file:
-            cfg = yaml.safe_load(file)
-
-            dict_pq = cfg.get("PowerRangesByNominalVoltage", None)
-            dict_voltage = cfg.get("VoltageRangesByNominalVoltage", None)
-
-            if dict_pq is None or dict_voltage is None:
-                raise ValueError(
-                    "Configuration must contain 'PowerRangesByNominalVoltage' and 'VoltageRangesByNominalVoltage'."
-                )
-
-            return MeasurementSimulationConfiguration(
-                seed=cfg["Seed"],
-                power_ranges=MeasurementRangeSet.from_dict(dict_pq),
-                voltage_ranges=MeasurementRangeSet.from_dict(dict_voltage),
-            )
+        return MeasurementSimulationConfigReader(measurement_simulation_path).read()
 
     def _eval_environment_variables(self):
         # allow base_url to be set via environment variable or command line argument
@@ -319,3 +303,43 @@ class ConfigReader:
         E. g.: ApplianceType -> appliance_type
         """
         return cls(**self._dict_to_snake_case(params)) if params else cls()
+
+
+class MeasurementSimulationConfigReader:
+    """
+    Reads and parses a measurement simulation configuration file.
+    """
+
+    def __init__(self, config_path: str):
+        """
+        Args:
+            config_path (str): Path to the measurement simulation configuration YAML file.
+        """
+        self.config_path = config_path
+
+    def read(self) -> MeasurementSimulationConfiguration:
+        """
+        Reads the measurement simulation configuration file and returns a configuration object.
+
+        Returns:
+            MeasurementSimulationConfiguration: The parsed configuration.
+
+        Raises:
+            ValueError: If required fields are missing.
+        """
+        with open(self.config_path, "r", encoding="UTF-8") as file:
+            cfg = yaml.safe_load(file)
+
+        dict_pq = cfg.get("PowerRangesByNominalVoltage", None)
+        dict_voltage = cfg.get("VoltageRangesByNominalVoltage", None)
+
+        if dict_pq is None or dict_voltage is None:
+            raise ValueError(
+                "Configuration must contain 'PowerRangesByNominalVoltage' and 'VoltageRangesByNominalVoltage'."
+            )
+
+        return MeasurementSimulationConfiguration(
+            seed=cfg["Seed"],
+            power_ranges=MeasurementRangeSet.from_dict(dict_pq),
+            voltage_ranges=MeasurementRangeSet.from_dict(dict_voltage),
+        )

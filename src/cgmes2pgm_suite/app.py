@@ -22,7 +22,7 @@ from cgmes2pgm_converter.common import Profile, Timer, Topology
 from power_grid_model_io.converters import PgmJsonConverter
 
 from cgmes2pgm_suite.common import NodeBalance
-from cgmes2pgm_suite.config import ConfigReader, SuiteConfiguration
+from cgmes2pgm_suite.config import SuiteConfigReader, SuiteConfiguration
 from cgmes2pgm_suite.export import (
     NodeBalanceExport,
     ResultTextExport,
@@ -79,7 +79,7 @@ def _read_config() -> SuiteConfiguration:
         logging.error("--config: path is not a file")
         sys.exit(1)
 
-    reader = ConfigReader(args.config)
+    reader = SuiteConfigReader(args.config)
     config = reader.read()
     config.logging_config.configure_logging()
 

@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .config import LoggingConfiguration, Steps, SuiteConfiguration
-from .reader import ConfigReader
+from .reader import MeasurementSimulationConfigReader, SuiteConfigReader
