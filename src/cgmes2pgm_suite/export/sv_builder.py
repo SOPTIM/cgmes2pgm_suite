@@ -311,15 +311,21 @@ class SvProfileBuilder:
             self.cgmes_dataset.insert_triples(subnet.to_triples(), self.target_graph)
 
     def _get_islands(self) -> list[TopologicalIsland]:
+
+        if not self.pgm_dataset.result_data:
+            return []
+
         topology = Topology(
             self.pgm_dataset.input_data,
             self.pgm_dataset.extra_info,
             self.pgm_dataset.result_data,
         )
+        topology.add_results(self.pgm_dataset.result_data)
 
         nodes = topology.get_nodes()
         nodes_per_subnet: dict[str, list] = {}
         ref_node_per_subnet: dict[str, str | None] = {}
+        subnet_energized: dict[str, bool] = {}
 
         for node in nodes:
             node_mrid = node["_extra"]["_mrid"]
@@ -327,6 +333,8 @@ class SvProfileBuilder:
 
             if subnet_name not in nodes_per_subnet:
                 nodes_per_subnet[subnet_name] = []
+                subnet_energized[subnet_name] = bool(node["_result"]["energized"])
+
             nodes_per_subnet[subnet_name].append(node_mrid)
 
             if self._has_active_source(node, topology):
@@ -338,15 +346,22 @@ class SvProfileBuilder:
 
                 ref_node_per_subnet[subnet_name] = node["_extra"]["_mrid"]
 
-        return self._create_topological_islands(nodes_per_subnet, ref_node_per_subnet)
+        return self._create_topological_islands(
+            nodes_per_subnet, ref_node_per_subnet, subnet_energized
+        )
 
     def _create_topological_islands(
         self,
         nodes_per_subnet: dict[str, list],
         ref_node_per_subnet: dict[str, str | None],
+        subnet_energized: dict[str, bool],
     ) -> list[TopologicalIsland]:
         islands = []
         for subnet_name, node_mrids in nodes_per_subnet.items():
+
+            if not subnet_energized.get(subnet_name, False):
+                continue
+
             mrid = str(uuid.uuid4())
             islands.append(
                 TopologicalIsland(
