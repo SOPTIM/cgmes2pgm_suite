@@ -282,6 +282,7 @@ class SvProfileBuilder:
         result_data = self.pgm_dataset.result_data[type_]
 
         df["_pgm_id"] = result_data["id"]
+        df["rdf:type"] = CLS
         df[f"{CLS}.p"] = result_data["p"] / 1e6
         df[f"{CLS}.q"] = result_data["q"] / 1e6
         df[f"{CIM_ID_OBJ}.mRID"] = [f'"{uuid.uuid4()}"' for _ in range(len(df))]
