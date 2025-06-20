@@ -1,4 +1,11 @@
 repos:
+  - repo: local
+    hooks:
+      - id: add-license-header
+        name: Add license headers to Python files
+        entry: add-header.sh
+        language: script
+        stages: [pre-commit]
   - repo: https://github.com/pycqa/isort
     rev: 6.0.1
     hooks:

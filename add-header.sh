@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 
+#
 boilerplate="# Copyright [2025] [SOPTIM AG]
 #
 # Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -17,14 +17,19 @@ boilerplate="# Copyright [2025] [SOPTIM AG]
 
 "
 
-# find all python source files
-find . -name "*.py" | while read file; do
-  # check if boiler exist
-  if ! grep -q "Licensed under the Apache License" "$file"; then
-    # add Boilerplate-comment to begin of file
-    echo "$boilerplate$(cat $file)" > $file
+# Only check newly added or modified Python files
+files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+
+for file in $files; do
+  if [ -f "$file" ] && ! grep -q "Licensed under the Apache License" "$file"; then
+    echo -e "$boilerplate\n$(cat "$file")" > "$file"
     echo "Boilerplate added to: $file"
-  else
-    echo "Boilerplate already included in: $file"
+    changed=1
   fi
 done
+
+# Fail the hook if any file was changed
+if [ "$changed" -eq 1 ]; then
+  echo "License header(s) added. Please stage the changes and commit again."
+  exit 1
+fi
