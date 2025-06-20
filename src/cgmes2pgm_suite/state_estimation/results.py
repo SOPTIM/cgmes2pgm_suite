@@ -12,25 +12,71 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass, field
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 from cgmes2pgm_converter.common import SymPowerType, VoltageMeasType
 from power_grid_model import ComponentType
+from power_grid_model.data_types import SingleDataset
 from power_grid_model_io.data_types import ExtraInfo
 
 from .options import PgmCalculationParameters
 
 
-class StateEstimationResult:
+@dataclass
+class PgmDataset:
+    """
+    Class to represent a complete pgm dataset including input data, result data and extra info.
+
+    Attributes:
+        input_data (SingleDataset): Input data of the dataset
+        result_data (SingleDataset | None): Result data of the dataset
+        data (SingleDataset): Merged input and result data
+        extra_info (ExtraInfo): Extra information
+    """
+
+    input_data: SingleDataset
+    result_data: Optional[SingleDataset] = None
+    extra_info: ExtraInfo = field(default_factory=dict)
+    data: SingleDataset = field(init=False)
+
+    def __post_init__(self):
+        self.data = (
+            self._merge_data(self.input_data, self.result_data)
+            if self.result_data
+            else self.input_data
+        )
+
+    def _merge_data(
+        self,
+        input_data: SingleDataset,
+        result_data: SingleDataset,
+    ) -> SingleDataset:
+        data = {}
+        for key, value in input_data.items():
+            data[key] = pd.DataFrame(value)
+
+        for key, value in result_data.items():
+            data[key] = data[key].join(
+                pd.DataFrame(value).set_index("id"),
+                on="id",
+                how="left",
+                validate="1:1",
+                rsuffix="_result",
+            )
+
+        return data
+
+
+# TODO: have PgmDataset as an attribute instead of using inheritance
+class StateEstimationResult(PgmDataset):
     """
     Class to store the results of the state estimation
 
     Attributes:
         run_name (str): Name of the stes-run
-        input_data (dict): Input data for the state estimation
-        extra_info (dict): Extra information about the input data
-        result_data (dict): Result data of the state estimation
-        data (dict): Merged input and result data
         params (PgmCalculationParameters): Parameters for the state estimation
         n_meas (int): Number of measurements including substituted measurements
         n_meas_actual (int): Number of measurements excluding substituted measurements
@@ -50,20 +96,20 @@ class StateEstimationResult:
     def __init__(
         self,
         run_name: str,
-        input_data: dict[str, np.ndarray],
+        input_data: SingleDataset,
         extra_info: ExtraInfo,
-        result_data: dict[str, np.ndarray] | None,
+        result_data: SingleDataset | None,
         params: PgmCalculationParameters,
     ):
 
-        self.run_name = run_name
-        self.input_data = input_data
-        self.result_data = result_data
-        self.converged = result_data is not None
-        self.data = (
-            self._merge_data(input_data, result_data) if result_data else input_data
+        super().__init__(
+            input_data=input_data,
+            result_data=result_data,
+            extra_info=extra_info,
         )
-        self.extra_info = extra_info
+
+        self.run_name = run_name
+        self.converged = self.result_data is not None
         self.params = params
 
         self.n_meas = (
@@ -126,6 +172,9 @@ class StateEstimationResult:
 
         j = 0.0
 
+        if not self.result_data:
+            return j
+
         # Voltage measurements
         for i, sensor_id in enumerate(
             self.result_data[ComponentType.sym_voltage_sensor]["id"]
@@ -171,7 +220,7 @@ class StateEstimationResult:
             list: List of sensor IDs
         """
 
-        if not self.converged:
+        if not self.result_data:
             return []
 
         bad_measurements = []
@@ -200,7 +249,7 @@ class StateEstimationResult:
             list: List of sensor IDs
         """
 
-        if not self.converged:
+        if not self.result_data:
             return []
 
         bad_measurements = []
@@ -232,7 +281,7 @@ class StateEstimationResult:
             list: List of sensor IDs
         """
 
-        if not self.converged:
+        if not self.result_data:
             return []
 
         bad_measurements = []
@@ -255,23 +304,3 @@ class StateEstimationResult:
         self, residual: np.ndarray, sigma: np.ndarray
     ) -> np.ndarray:
         return np.abs(residual) > self.params.bad_data_tolerance * sigma
-
-    def _merge_data(
-        self,
-        input_data: dict[str, np.ndarray],
-        result_data: dict[str, np.ndarray],
-    ) -> dict[str, pd.DataFrame]:
-        data = {}
-        for key, value in input_data.items():
-            data[key] = pd.DataFrame(value)
-
-        for key, value in result_data.items():
-            data[key] = data[key].join(
-                pd.DataFrame(value).set_index("id"),
-                on="id",
-                how="left",
-                validate="1:1",
-                rsuffix="_result",
-            )
-
-        return data

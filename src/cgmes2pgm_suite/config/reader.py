@@ -16,7 +16,6 @@ import logging
 import os
 import re
 import sys
-from dataclasses import dataclass
 
 import yaml
 from cgmes2pgm_converter.common import (
@@ -35,127 +34,97 @@ from cgmes2pgm_converter.common import (
     UMeasurementSubstitutionOptions,
 )
 
-from cgmes2pgm_suite.measurement_simulation import build_ranges_from_dict
+from cgmes2pgm_suite.measurement_simulation import (
+    MeasurementRangeSet,
+    MeasurementSimulationConfiguration,
+)
 from cgmes2pgm_suite.state_estimation import (
     PgmCalculationParameters,
     StesOptions,
 )
 
+from .config import LoggingConfiguration, Steps, SuiteConfiguration
+
 LOG_FORMAT = "%(levelname)-8s :: %(message)s"
 
 
-@dataclass
-class Steps:
-    """Steps to be executed in the application.
-    Attributes:
-        measurement_simulation (bool): Whether to run the measurement simulation.
-        stes (bool): Whether to run the state estimation.
+class SuiteConfigReader:
     """
-
-    measurement_simulation: bool = False
-    stes: bool = True
-
-
-class ConfigReader:
-    """
-    A class to read and parse configuration files.
-
-    Attributes:
-        dataset (CgmesDataset): Dataset configuration.
-        converter_options (ConverterOptions): Converter options configuration.
-        stes_options (StesOptions): State estimation options configuration.
-        steps (Steps): Steps configuration.
-        measurement_simulation (dict): Measurement simulation configuration.
+    Class to read and parse configuration files.
     """
 
     def __init__(self, path: str):
         """
         Initialize the ConfigReader with the path to the configuration file.
 
-        :param path: Path to the configuration file.
+        Args:
+            path (str): Path to the configuration file.
+
+        Raises:
+            ValueError: If the configuration file is empty or not found.
         """
 
-        self.dataset: CgmesDataset = None
-        self.converter_options: ConverterOptions = None
-        self.stes_options: StesOptions = None
-        self.steps: Steps = None
-        self.output_folder: str = None
-        self._measurement_simulation_path: str = None
-
         self._path = path
-        self._config: dict = None
+        self._config: dict = {}
 
-    def read(self):
+    def read(self) -> SuiteConfiguration:
         """Reads the configuration file and initializes the dataset and converter options."""
         with open(self._path, "r", encoding="UTF-8") as file:
             self._config = yaml.safe_load(file)
 
+        if not self._config:
+            raise ValueError(f"Configuration file {self._path} is empty or not found.")
+
         self._eval_environment_variables()
 
-        self.output_folder = self._config.get("OutputFolder", "")
-        self.dataset = self._read_dataset()
-        self.converter_options = self._read_converter_options()
-        self.stes_options = self._read_stes_parameter()
-
-        self.steps = self._construct_from_dict(
+        steps = self._construct_from_dict(
             Steps,
             self._config.get("Steps", {}),
         )
 
-        ranges_path = self._config.get("MeasurementSimulation", {}).get("Ranges", None)
-        if ranges_path is None:
-            self._measurement_simulation_path = None
-        elif os.path.isabs(ranges_path):
-            self._measurement_simulation_path = ranges_path
-        else:
-            self._measurement_simulation_path = os.path.join(
-                os.path.dirname(self._path), ranges_path
-            )
+        return SuiteConfiguration(
+            dataset=self._read_dataset(),
+            converter_options=self._read_converter_options(),
+            stes_options=self._read_stes_parameter(),
+            steps=steps,
+            measurement_simulation=self.get_measurement_simulation_ranges(),
+            logging_config=self.get_logging_config(),
+            output_folder=self._config.get("OutputFolder", ""),
+        )
 
-    def configure_logging(self):
+    def get_logging_config(self) -> LoggingConfiguration:
         """Configures the logging settings for the application."""
 
-        if not self._config:
-            self.read()
+        output_folder = self._config.get("OutputFolder", "")
+        logging_config = self._config.get("Logging", {})
+        level = logging_config.get("Level", "INFO")
+        log_file = logging_config.get("File", "log.txt")
 
-        # Reset logging configuration
-        for handler in logging.root.handlers[:]:
-            logging.root.removeHandler(handler)
-        logging.root.handlers.clear()
+        if not os.path.isabs(log_file):
+            log_file = os.path.join(output_folder, log_file)
 
-        logging_config = self._config.get("Logging", None)
-        level = logging_config.get("Level", "INFO") if logging_config else "INFO"
+        logging_config = LoggingConfiguration(
+            file=log_file,
+            level=level,
+        )
 
-        if logging_config and "File" in logging_config:
-            file_name = logging_config.get("File", "log.txt")
-            os.makedirs(self.output_folder, exist_ok=True)
-            logging.basicConfig(
-                filename=os.path.join(self.output_folder, file_name),
-                level=logging.getLevelName(level),
-                format=LOG_FORMAT,
-            )
-
-            stdout_handler = logging.StreamHandler(sys.stdout)
-            stdout_handler.setLevel(logging.getLevelName(level))
-            stdout_handler.setFormatter(logging.Formatter(LOG_FORMAT))
-
-            logging.getLogger().addHandler(stdout_handler)
-        else:
-            logging.basicConfig(
-                level=logging.getLevelName(level),
-                format="%(levelname)-8s :: %(message)s",
-                stream=sys.stdout,
-            )
+        return logging_config
 
     def get_measurement_simulation_ranges(self):
         """
         Returns the measurement simulation ranges.
         """
-        if not self._measurement_simulation_path:
-            self.read()
+        measurement_simulation_path = self._config.get("MeasurementSimulation", {}).get(
+            "Ranges", None
+        )
+        if measurement_simulation_path and not os.path.isabs(
+            measurement_simulation_path
+        ):
+            measurement_simulation_path = os.path.join(
+                os.path.dirname(self._path), measurement_simulation_path
+            )
 
-        with open(self._measurement_simulation_path, "r", encoding="UTF-8") as file:
-            return build_ranges_from_dict(yaml.safe_load(file))
+        return MeasurementSimulationConfigReader(measurement_simulation_path).read()
 
     def _eval_environment_variables(self):
         # allow base_url to be set via environment variable or command line argument
@@ -176,7 +145,7 @@ class ConfigReader:
 
     def _read_dataset(self) -> CgmesDataset:
         source_data = self._config["DataSource"]
-        graph_data: dict = source_data.get("Graphs", None)
+        graph_data: dict = source_data.get("Graphs", {})
 
         base_url = source_data["BaseUrl"]
         if source_data.get("Dataset"):
@@ -184,14 +153,10 @@ class ConfigReader:
                 base_url += "/"
             base_url += source_data["Dataset"]
 
-        graphs = (
-            {
-                Profile.OP: base_url + graph_data.get("OP"),
-                Profile.MEAS: base_url + graph_data.get("MEAS"),
-            }
-            if graph_data
-            else None
-        )
+        graphs = {}
+        for profile in Profile:
+            if graph_data.get(profile):
+                graphs[profile] = base_url + graph_data.get(profile)
 
         return CgmesDataset(
             base_url=base_url,
@@ -233,6 +198,7 @@ class ConfigReader:
         splitting = converter_options.get("NetworkSplitting", {})
         split_branches = self._choose_profile(splitting.get("Branches", None))
         split_substations = self._choose_profile(splitting.get("Substations", None))
+
         return NetworkSplittingOptions(
             enable=splitting.get("Enable", False),
             add_sources=splitting.get("AddSources", False),
@@ -337,3 +303,43 @@ class ConfigReader:
         E. g.: ApplianceType -> appliance_type
         """
         return cls(**self._dict_to_snake_case(params)) if params else cls()
+
+
+class MeasurementSimulationConfigReader:
+    """
+    Reads and parses a measurement simulation configuration file.
+    """
+
+    def __init__(self, config_path: str):
+        """
+        Args:
+            config_path (str): Path to the measurement simulation configuration YAML file.
+        """
+        self.config_path = config_path
+
+    def read(self) -> MeasurementSimulationConfiguration:
+        """
+        Reads the measurement simulation configuration file and returns a configuration object.
+
+        Returns:
+            MeasurementSimulationConfiguration: The parsed configuration.
+
+        Raises:
+            ValueError: If required fields are missing.
+        """
+        with open(self.config_path, "r", encoding="UTF-8") as file:
+            cfg = yaml.safe_load(file)
+
+        dict_pq = cfg.get("PowerRangesByNominalVoltage", None)
+        dict_voltage = cfg.get("VoltageRangesByNominalVoltage", None)
+
+        if dict_pq is None or dict_voltage is None:
+            raise ValueError(
+                "Configuration must contain 'PowerRangesByNominalVoltage' and 'VoltageRangesByNominalVoltage'."
+            )
+
+        return MeasurementSimulationConfiguration(
+            seed=cfg["Seed"],
+            power_ranges=MeasurementRangeSet.from_dict(dict_pq),
+            voltage_ranges=MeasurementRangeSet.from_dict(dict_voltage),
+        )

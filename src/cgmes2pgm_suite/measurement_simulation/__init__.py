@@ -17,5 +17,9 @@ This module contains functionalities for simulating measurements for a CGMES dat
 based on an provided SV-Profile.
 """
 
-from .meas_ranges import MeasurementRange, MeasurementRangeSet, build_ranges_from_dict
+from .meas_ranges import (
+    MeasurementRange,
+    MeasurementRangeSet,
+    MeasurementSimulationConfiguration,
+)
 from .measurement_builder import MeasurementBuilder

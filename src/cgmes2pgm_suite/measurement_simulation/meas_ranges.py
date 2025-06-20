@@ -72,9 +72,7 @@ class MeasurementRangeSet:
         self.zero_threshold = zero_threshold
 
     @staticmethod
-    def from_yaml(data):
-        if data is None:
-            return None
+    def from_dict(data):
 
         apply_range = True
         zero_threshold = 0
@@ -131,15 +129,19 @@ class MeasurementRangeSet:
         return meas_range.distort_measurement(value)
 
 
-def build_ranges_from_dict(
-    cfg: dict,
-) -> tuple[MeasurementRangeSet, MeasurementRangeSet]:
+@dataclass
+class MeasurementSimulationConfiguration:
+    """
+    Configuration for the measurement simulation.
 
-    RandomNumberGenerator.set_seed(cfg["Seed"])
+    Attributes:
+        power_ranges (MeasurementRangeSet): Set of measurement ranges for PQ values.
+        voltage_ranges (MeasurementRangeSet): Set of measurement ranges for voltage values.
+    """
 
-    power_ranges = MeasurementRangeSet.from_yaml(cfg.get("PowerRangesByNominalVoltage"))
-    voltage_ranges = MeasurementRangeSet.from_yaml(
-        cfg.get("VoltageRangesByNominalVoltage")
-    )
+    seed: int
+    power_ranges: MeasurementRangeSet
+    voltage_ranges: MeasurementRangeSet
 
-    return voltage_ranges, power_ranges
+    def __post_init__(self):
+        RandomNumberGenerator.set_seed(self.seed)

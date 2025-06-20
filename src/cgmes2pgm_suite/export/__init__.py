@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-This module provides export functionalities in various data formats 
+This module provides export functionalities in various data formats
 for PGM-Models and StateEstimation-Results.
 """
 
@@ -23,6 +23,7 @@ from .node_balance_export import NodeBalanceExport
 from .pgm_export import PgmJsonExport
 from .result_text_export import ResultTextExport
 from .ssh_substitution_export import SshSubstitutionExport
+from .sv_builder import CgmesFullModel, SvProfileBuilder
 from .text_export import TextExport
 
 __all__ = [
@@ -33,4 +34,6 @@ __all__ = [
     "NodeBalanceExport",
     "SshSubstitutionExport",
     "MeasurementExport",
+    "SvProfileBuilder",
+    "CgmesFullModel",
 ]

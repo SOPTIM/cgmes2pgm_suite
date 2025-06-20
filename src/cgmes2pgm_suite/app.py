@@ -18,15 +18,16 @@ import os
 import sys
 
 from cgmes2pgm_converter import CgmesToPgmConverter
-from cgmes2pgm_converter.common import Timer, Topology
+from cgmes2pgm_converter.common import Profile, Timer, Topology
 from power_grid_model_io.converters import PgmJsonConverter
 
 from cgmes2pgm_suite.common import NodeBalance
-from cgmes2pgm_suite.config import ConfigReader
+from cgmes2pgm_suite.config import SuiteConfigReader, SuiteConfiguration
 from cgmes2pgm_suite.export import (
     NodeBalanceExport,
     ResultTextExport,
     StesResultExcelExport,
+    SvProfileBuilder,
     TextExport,
 )
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
@@ -37,11 +38,10 @@ from cgmes2pgm_suite.state_estimation import (
 
 
 def main():
-    config = _read_args()
+    config = _read_config()
 
     if config.steps.measurement_simulation:
-        v_ranges, pq_ranges = config.get_measurement_simulation_ranges()
-        builder = MeasurementBuilder(config.dataset, v_ranges, pq_ranges)
+        builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
         builder.build_from_sv()
 
     extra_info, input_data = _convert_cgmes(config.dataset, config.converter_options)
@@ -61,7 +61,7 @@ def main():
             _export_runs(results, config.output_folder, config)
 
 
-def _read_args() -> ConfigReader:
+def _read_config() -> SuiteConfiguration:
     parser = argparse.ArgumentParser(description="Convert CGMES to PGM")
     parser.add_argument(
         "--config",
@@ -79,9 +79,9 @@ def _read_args() -> ConfigReader:
         logging.error("--config: path is not a file")
         sys.exit(1)
 
-    config = ConfigReader(args.config)
-    config.read()
-    config.configure_logging()
+    reader = SuiteConfigReader(args.config)
+    config = reader.read()
+    config.logging_config.configure_logging()
 
     return config
 
@@ -96,7 +96,7 @@ def _convert_cgmes(ds, options):
 
 
 def _export_run(
-    result: StateEstimationResult, output_folder: str, config: ConfigReader
+    result: StateEstimationResult, output_folder: str, config: SuiteConfiguration
 ):
     os.makedirs(output_folder, exist_ok=True)
 
@@ -108,7 +108,7 @@ def _export_run(
 
 
 def _export_runs(
-    results: list[StateEstimationResult], output_folder: str, config: ConfigReader
+    results: list[StateEstimationResult], output_folder: str, config: SuiteConfiguration
 ):
     for result in results:
         _export_run(result, os.path.join(output_folder, result.run_name), config)
@@ -138,8 +138,11 @@ def _export_converted_model(result: StateEstimationResult, output_folder: str):
 
 
 def _export_result_data(
-    result: StateEstimationResult, output_folder: str, config: ConfigReader
+    result: StateEstimationResult, output_folder: str, config: SuiteConfiguration
 ):
+
+    if not result.result_data:
+        return
 
     topo = Topology(result.input_data, result.extra_info, result.result_data)
     noba = NodeBalance(topo)
@@ -150,6 +153,7 @@ def _export_result_data(
     )
 
     exporter = ResultTextExport(os.path.join(output_folder, "pgm_result.txt"), result)
+    exporter.export()
 
     exporter = TextExport(
         os.path.join(output_folder, "pgm_result_full.txt"),
@@ -166,3 +170,14 @@ def _export_result_data(
         sv_comparison=True,
     )
     exporter.export()
+
+    if Profile.SV not in config.dataset.graphs:
+        logging.warning("No SV profile url defined, skipping SV profile export")
+        return
+
+    sv_profile_builder = SvProfileBuilder(
+        config.dataset,
+        result,
+        target_graph=config.dataset.graphs[Profile.SV],
+    )
+    sv_profile_builder.build(True)

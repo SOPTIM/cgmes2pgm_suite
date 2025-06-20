@@ -4,8 +4,9 @@ OutputFolder: "../out/SmallGrid"
 DataSource:
   BaseUrl: "http://localhost:3030/SmallGrid"
   Graphs:
-    OP: "/op"
-    MEAS: "/meas"
+    OP: "/op" # Target graph for MeasurementSimulation
+    MEAS: "/meas" # Target graph for MeasurementSimulation
+    SV: "/sv" # Target graph for SV-Profile Export
   CIM-Namespace: "http://iec.ch/TC57/CIM100#"
 
 Steps:
