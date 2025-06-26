@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .cgmes_classes import CgmesFullModel
 from .format_df import format_dataframe
 from .sv_lookup import SvPowerFlowLookup, SvVoltageLookup
 from .unit_converter import convert_dataframe
+from .xml_builder import CimXmlBuilder, CimXmlObject

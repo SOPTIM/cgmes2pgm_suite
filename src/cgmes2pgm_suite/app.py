@@ -24,6 +24,7 @@ from power_grid_model_io.converters import PgmJsonConverter
 from cgmes2pgm_suite.common import NodeBalance
 from cgmes2pgm_suite.config import SuiteConfigReader, SuiteConfiguration
 from cgmes2pgm_suite.export import (
+    GraphToXMLExport,
     NodeBalanceExport,
     ResultTextExport,
     StesResultExcelExport,
@@ -43,6 +44,14 @@ def main():
     if config.steps.measurement_simulation:
         builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
         builder.build_from_sv()
+
+        # target_graph = config.dataset.graphs[Profile.OP]
+        # rdfxml_export = GraphToXMLExport(
+        # config.dataset,
+        # source_graph=target_graph,
+        # target_path=os.path.join(config.output_folder, "op.xml"),
+        # )
+        # rdfxml_export.export()
 
     extra_info, input_data = _convert_cgmes(config.dataset, config.converter_options)
 
@@ -175,9 +184,17 @@ def _export_result_data(
         logging.warning("No SV profile url defined, skipping SV profile export")
         return
 
+    target_graph = config.dataset.graphs[Profile.SV]
     sv_profile_builder = SvProfileBuilder(
         config.dataset,
         result,
-        target_graph=config.dataset.graphs[Profile.SV],
+        target_graph=target_graph,
     )
     sv_profile_builder.build(True)
+
+    rdfxml_export = GraphToXMLExport(
+        config.dataset,
+        source_graph=target_graph,
+        target_path=os.path.join(output_folder, "pgm_result.xml"),
+    )
+    rdfxml_export.export()
