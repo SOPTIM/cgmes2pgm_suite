@@ -44,14 +44,7 @@ def main():
     if config.steps.measurement_simulation:
         builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
         builder.build_from_sv()
-
-        # target_graph = config.dataset.graphs[Profile.OP]
-        # rdfxml_export = GraphToXMLExport(
-        # config.dataset,
-        # source_graph=target_graph,
-        # target_path=os.path.join(config.output_folder, "op.xml"),
-        # )
-        # rdfxml_export.export()
+        _export_measurement_simulation(config)
 
     extra_info, input_data = _convert_cgmes(config.dataset, config.converter_options)
 
@@ -102,6 +95,27 @@ def _convert_cgmes(ds, options):
         input_data, extra_info = converter.convert()
 
     return extra_info, input_data
+
+
+def _export_measurement_simulation(config: SuiteConfiguration):
+    op_graph = config.dataset.graphs[Profile.OP]
+    meas_graph = config.dataset.graphs[Profile.MEAS]
+    rdfxml_export = GraphToXMLExport(
+        config.dataset,
+        source_graph=op_graph,
+        target_path=os.path.join(config.output_folder, "op.xml"),
+    )
+    rdfxml_export.export()
+
+    if op_graph == meas_graph:
+        return
+
+    rdfxml_export = GraphToXMLExport(
+        config.dataset,
+        source_graph=meas_graph,
+        target_path=os.path.join(config.output_folder, "meas.xml"),
+    )
+    rdfxml_export.export()
 
 
 def _export_run(

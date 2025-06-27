@@ -28,9 +28,8 @@ from cgmes2pgm_converter.common import (
 )
 from power_grid_model import ComponentType
 
+from cgmes2pgm_suite.common import CgmesFullModel
 from cgmes2pgm_suite.state_estimation import PgmDataset
-
-from .utils import CgmesFullModel
 
 
 @dataclass

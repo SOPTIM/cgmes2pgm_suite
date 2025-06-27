@@ -16,6 +16,7 @@
 This module contains common utilities and classes used throughout the package.
 """
 
+from .cgmes_classes import CgmesFullModel
 from .input_data_tools import CacheEntry, InputDataIdCache
 from .node_balance import (
     ContainerData,

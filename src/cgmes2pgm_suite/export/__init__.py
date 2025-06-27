@@ -25,7 +25,6 @@ from .result_text_export import ResultTextExport
 from .ssh_substitution_export import SshSubstitutionExport
 from .sv_builder import SvProfileBuilder
 from .text_export import TextExport
-from .utils import CgmesFullModel
 from .xml_export import GraphToXMLExport
 
 __all__ = [
@@ -37,5 +36,4 @@ __all__ = [
     "SshSubstitutionExport",
     "MeasurementExport",
     "SvProfileBuilder",
-    "CgmesFullModel",
 ]
