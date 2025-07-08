@@ -39,8 +39,11 @@ from cgmes2pgm_suite.state_estimation import (
 
 
 def main():
-    config = _read_config()
+    config = _read_config(_get_config_path())
+    _run(config)
 
+
+def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
     if config.steps.measurement_simulation:
         builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
         builder.build_from_sv()
@@ -62,8 +65,10 @@ def main():
         else:  # List of results
             _export_runs(results, config.output_folder, config)
 
+        return results
 
-def _read_config() -> SuiteConfiguration:
+
+def _get_config_path() -> str:
     parser = argparse.ArgumentParser(description="Convert CGMES to PGM")
     parser.add_argument(
         "--config",
@@ -80,8 +85,12 @@ def _read_config() -> SuiteConfiguration:
     if not os.path.isfile(args.config):
         logging.error("--config: path is not a file")
         sys.exit(1)
+    return args.config
 
-    reader = SuiteConfigReader(args.config)
+
+def _read_config(config_path) -> SuiteConfiguration:
+
+    reader = SuiteConfigReader(config_path)
     config = reader.read()
     config.logging_config.configure_logging()
 
