@@ -21,13 +21,10 @@ class CimXmlObject:
     Represents an object within an RDF/XML file.
 
     Attributes:
-        iri (str): The identifier for the object
-        type_ (str): The type of the object corresponding the rdf:type attribute
-        attributes (dict): A dictionary of attributes/literals for the object
-        references (dict): A dictionary of references to other objects
-
-    Raises:
-        ValueError: If the UUID format is invalid.
+        iri (str): The identifier (IRI) for the object.
+        type_ (str): The type of the object, used as the XML tag.
+        attributes (list[tuple[str, str]]): List of (name, value) attribute pairs.
+        references (list[tuple[str, str]]): List of (name, iri) reference pairs.
     """
 
     iri: str
