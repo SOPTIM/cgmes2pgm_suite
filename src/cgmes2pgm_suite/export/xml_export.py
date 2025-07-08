@@ -21,7 +21,13 @@ DEFAULT_TYPE = "rdf:Description"
 
 
 class GraphToXMLExport:
-    def __init__(self, dataset: CgmesDataset, source_graph: str, target_path: str):
+    def __init__(
+        self,
+        dataset: CgmesDataset,
+        source_graph: str,
+        target_path: str,
+        url_to_urn: bool = True,
+    ):
         """
         Initializes the GraphToXML class with a CgmesDataset.
 
@@ -29,10 +35,12 @@ class GraphToXMLExport:
             dataset (CgmesDataset): The dataset to be converted to XML
             source_graph (str): The name of the source graph to be exported
             target_path (str): The path where the XML file will be saved
+            url_to_urn (bool): If True, converts URL to URN: e.g. http://localhost:3030/ieee118#_uuid -> #_uuid
         """
         self.dataset = dataset
         self.source_graph = source_graph
         self.target_path = target_path
+        self.url_to_urn = url_to_urn
 
     def export(self):
         """
@@ -57,7 +65,7 @@ class GraphToXMLExport:
     def _build_rdf_object(
         self, subject: str, predicates_objects: pd.DataFrame
     ) -> CimXmlObject:
-        mrid = self._make_relative(str(subject))
+        mrid = self._to_urn(subject) if self.url_to_urn else subject
         rdf_object = CimXmlObject(iri=mrid, type_=DEFAULT_TYPE)
         for _, row in predicates_objects.iterrows():
             self._add_tuple_to_object(rdf_object, row)
@@ -75,7 +83,7 @@ class GraphToXMLExport:
             rdf_object.set_type(self.apply_prefix(obj))
 
         elif row["isIRI"]:
-            obj_uuid = self._make_relative(str(obj))
+            obj_uuid = self._to_urn(str(obj)) if self.url_to_urn else str(obj)
             rdf_object.add_reference(name=predicate, iri=obj_uuid)
 
         else:
@@ -113,13 +121,11 @@ class GraphToXMLExport:
         # if no prefix found, return the full uri
         return predicate
 
-    def _make_relative(self, iri: str) -> str:
+    def _to_urn(self, iri: str) -> str:
         """
         If the iri points to an element within the same dataset, it can be converted to an iri fragment.
         e.g. localhost:3030/dataset/data#_<uuid> -> #_<uuid>
         """
-
-        # strip self.dataset.base_url + "/data#_"
 
         dataset = self.dataset.base_url + "/data#_"
         if iri.startswith(dataset):
