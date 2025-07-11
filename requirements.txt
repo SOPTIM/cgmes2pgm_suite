@@ -10,3 +10,4 @@ StrEnum ~= 0.4.15
 black==24.10.0
 pre_commit==4.0.0
 cgmes2pgm_converter~=0.2.0
+rdflib~=7.1.4
