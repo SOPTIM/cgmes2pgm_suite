@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+
 import pandas as pd
-from cgmes2pgm_converter.common.cgmes_dataset import CgmesDataset
+from cgmes2pgm_converter.common import CgmesDataset
 
 from .utils import CimXmlBuilder, CimXmlObject
 
@@ -21,26 +23,27 @@ DEFAULT_TYPE = "rdf:Description"
 
 
 class GraphToXMLExport:
+    """
+    A class to export a CGMES dataset graph to an CIM/XML file based on IEC 61970-552:2016.
+    The urn:uuid:<uuid> format is used for all elements, as recommended for an Edition 2 producer.
+
+    """
+
     def __init__(
         self,
         dataset: CgmesDataset,
         source_graph: str,
         target_path: str,
-        url_to_urn: bool = True,
     ):
         """
-        Initializes the GraphToXML class with a CgmesDataset.
-
         Args:
             dataset (CgmesDataset): The dataset to be converted to XML
             source_graph (str): The name of the source graph to be exported
             target_path (str): The path where the XML file will be saved
-            url_to_urn (bool): If True, converts URL to URN: e.g. http://localhost:3030/ieee118#_uuid -> #_uuid
         """
         self.dataset = dataset
         self.source_graph = source_graph
         self.target_path = target_path
-        self.url_to_urn = url_to_urn
 
     def export(self):
         """
@@ -54,9 +57,11 @@ class GraphToXMLExport:
             grouped = triples.groupby("s")
             model_header_subject = self._get_model_header()
             subjects = list(grouped.groups.keys())
+
             ordered_subjects = [model_header_subject] + [
                 s for s in subjects if s != model_header_subject
             ]
+
             for subject in ordered_subjects:
                 predicates_objects = grouped.get_group(subject)
                 rdf_object = self._build_rdf_object(str(subject), predicates_objects)
@@ -65,7 +70,7 @@ class GraphToXMLExport:
     def _build_rdf_object(
         self, subject: str, predicates_objects: pd.DataFrame
     ) -> CimXmlObject:
-        mrid = self._to_urn(subject) if self.url_to_urn else subject
+        mrid = self._to_urn(subject)
         rdf_object = CimXmlObject(iri=mrid, type_=DEFAULT_TYPE)
         for _, row in predicates_objects.iterrows():
             self._add_tuple_to_object(rdf_object, row)
@@ -83,7 +88,7 @@ class GraphToXMLExport:
             rdf_object.set_type(self.apply_prefix(obj))
 
         elif row["isIRI"]:
-            obj_uuid = self._to_urn(str(obj)) if self.url_to_urn else str(obj)
+            obj_uuid = self._to_urn(str(obj))
             rdf_object.add_reference(name=predicate, iri=obj_uuid)
 
         else:
@@ -123,13 +128,19 @@ class GraphToXMLExport:
 
     def _to_urn(self, iri: str) -> str:
         """
-        If the iri points to an element within the same dataset, it can be converted to an iri fragment.
-        e.g. localhost:3030/dataset/data#_<uuid> -> #_<uuid>
+        Try to convert urls to urn:uuid format.
+        Only convert urls within the same dataset.
+        e.g. localhost:3030/dataset/data#_<uuid> -> urn:uuid:<uuid>
         """
 
-        dataset = self.dataset.base_url + "/data#_"
-        if iri.startswith(dataset):
-            return f"#_{iri[len(dataset):]}"
+        if iri.startswith(self.dataset.base_url):
+            # Extract the UUID from the IRI
+            # The IRI is expected to be in the format: <dataset_base_url><some_path>#_<uuid>
+            match = re.search(r"#_(.+)$", iri)
+            if match:
+                uuid = match.group(1)
+                return f"urn:uuid:{uuid}"
+
         return iri
 
     def _get_model_header(self) -> str:
