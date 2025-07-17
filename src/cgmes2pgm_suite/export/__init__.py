@@ -36,4 +36,5 @@ __all__ = [
     "SshSubstitutionExport",
     "MeasurementExport",
     "SvProfileBuilder",
+    "GraphToXMLExport",
 ]
