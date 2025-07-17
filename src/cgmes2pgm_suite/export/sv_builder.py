@@ -303,7 +303,7 @@ class SvProfileBuilder:
             islands.append(
                 TopologicalIsland(
                     mrid=mrid,
-                    iri=self.cgmes_dataset.mrid_to_uri(mrid),
+                    iri=self.cgmes_dataset.mrid_to_urn(mrid),
                     name=subnet_name,
                     topological_nodes=node_mrids,
                     angle_ref_node=ref_node_per_subnet.get(subnet_name, None),

@@ -176,7 +176,7 @@ class PowerMeasurementBuilder:
 
         analogs = [self._sv_power_to_p_meas[sv] for sv in sv["sv"]]
         vals_p_op["cim:AnalogValue.Analog"] = [
-            self._datasource.mrid_to_uri(analog) for analog in analogs
+            self._datasource.mrid_to_urn(analog) for analog in analogs
         ]
         vals_p_op["cim:AnalogValue.MeasurementValueSource"] = self._sources[
             MeasurementValueSource.SCADA
@@ -210,7 +210,7 @@ class PowerMeasurementBuilder:
 
         analogs = [self._sv_power_to_q_meas[sv] for sv in sv["sv"]]
         vals_q_op["cim:AnalogValue.Analog"] = [
-            self._datasource.mrid_to_uri(analog) for analog in analogs
+            self._datasource.mrid_to_urn(analog) for analog in analogs
         ]
         vals_q_op["cim:AnalogValue.MeasurementValueSource"] = self._sources[
             MeasurementValueSource.SCADA

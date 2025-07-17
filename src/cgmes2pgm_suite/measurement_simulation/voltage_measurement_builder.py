@@ -123,7 +123,7 @@ class VoltageMeasurementBuilder:
         vals_meas["rdf:type"] = f"<{self._datasource.cim_namespace}AnalogValue>"
         analogs = [self._sv_voltage_to_meas[sv] for sv in sv["sv"]]
         vals_op["cim:AnalogValue.Analog"] = [
-            self._datasource.mrid_to_uri(analog) for analog in analogs
+            self._datasource.mrid_to_urn(analog) for analog in analogs
         ]
 
         vals_op["cim:AnalogValue.MeasurementValueSource"] = self._sources[
