@@ -90,6 +90,7 @@ class SuiteConfigReader:
             measurement_simulation=self.get_measurement_simulation_ranges(),
             logging_config=self.get_logging_config(),
             output_folder=self._config.get("OutputFolder", ""),
+            xml_file_location=self._config.get("XmlFileLocation", ""),
         )
 
     def get_logging_config(self) -> LoggingConfiguration:
