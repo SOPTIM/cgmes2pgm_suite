@@ -112,6 +112,7 @@ class SuiteConfiguration:
             Import needs to be enabled in the steps configuration.
     """
 
+    name: str
     dataset: CgmesDataset
     converter_options: ConverterOptions
     stes_options: StesOptions

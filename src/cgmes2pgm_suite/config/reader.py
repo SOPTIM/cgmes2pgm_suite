@@ -83,6 +83,7 @@ class SuiteConfigReader:
         )
 
         return SuiteConfiguration(
+            name=self._config.get("Name", "dataset"),
             dataset=self._read_dataset(),
             converter_options=self._read_converter_options(),
             stes_options=self._read_stes_parameter(),
