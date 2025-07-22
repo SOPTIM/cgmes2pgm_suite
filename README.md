@@ -85,6 +85,11 @@ This project includes third-party dependencies, which are licensed under their o
 - [XlsxWriter](https://pypi.org/project/XlsxWriter/) (BSD License)
 - [PyYAML](https://pypi.org/project/PyYAML/) (MIT License)
 - [StrEnum](https://pypi.org/project/StrEnum/) (MIT License)
+- [docker](https://pypi.org/project/docker/) (Apache License 2.0)
+
+This project includes code from [jena-fuseki-docker](https://repo1.maven.org/maven2/org/apache/jena/jena-fuseki-docker/)
+in the `src/cgmes2pgm_suite/resources/docker` directory, which is redistributed under the original Apache License 2.0.
+See the root‑level [`NOTICE`](./NOTICE) file for full attribution.
 
 ## Commercial Support and Services
 

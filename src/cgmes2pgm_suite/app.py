@@ -32,7 +32,7 @@ from cgmes2pgm_suite.export import (
     TextExport,
 )
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
-from cgmes2pgm_suite.rdf_store import RdfXmlImport
+from cgmes2pgm_suite.rdf_store import FusekiDockerContainer, FusekiServer, RdfXmlImport
 from cgmes2pgm_suite.state_estimation import (
     StateEstimationResult,
     StateEstimationWrapper,
@@ -41,11 +41,21 @@ from cgmes2pgm_suite.state_estimation import (
 
 def main():
     config = _read_config(_get_config_path())
+
+    fuseki_container = FusekiDockerContainer()
+    if config.steps.own_fuseki_container:
+        fuseki_container.start(replace_existing_container=False)
+
     _run(config)
+
+    if config.steps.own_fuseki_container:
+        fuseki_container.stop()
+        fuseki_container.remove()
 
 
 def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
 
+    _check_fuseki(config)
     if config.steps.upload_xml_files:
         _upload_files(config)
 
@@ -73,6 +83,21 @@ def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
         _export_runs(results, config.output_folder, config)
 
     return results
+
+
+def _check_fuseki(config):
+    fuseki = FusekiServer("http://localhost:3030")
+
+    if not fuseki.ping():
+        raise RuntimeError("Fuseki server is not running or not reachable.")
+
+    if not fuseki.dataset_exists(config.name):
+        fuseki.create_dataset(config.name)
+
+    if not fuseki.dataset_exists(config.name):
+        raise RuntimeError(
+            f"Could not create dataset '{config.name}' on Fuseki server at {fuseki.url}"
+        )
 
 
 def _get_config_path() -> str:
@@ -104,14 +129,28 @@ def _read_config(config_path) -> SuiteConfiguration:
     return config
 
 
+# Module-level constant for used profiles
+USED_PROFILES = {"EQ", "OP", "MEAS", "SV", "TP", "SSH"}
+
+
 def _upload_files(config: SuiteConfiguration):
     with Timer("Importing XML files", loglevel=logging.INFO):
         graph = "default"
+
         config.dataset.drop_graph(graph)
         importer = RdfXmlImport(dataset=config.dataset, target_graph=graph)
-        importer.import_directory(
-            config.xml_file_location,
-        )
+
+        directory = config.xml_file_location
+        if not os.path.isdir(directory):
+            raise ValueError(f"The provided path '{directory}' is not a directory.")
+
+        files = [
+            os.path.join(directory, f)
+            for f in os.listdir(directory)
+            if f.endswith(".xml") and any(profile in f for profile in USED_PROFILES)
+        ]
+
+        importer.import_files(files)
 
 
 def _convert_cgmes(ds, options):
@@ -235,6 +274,6 @@ def _export_result_data(
     rdfxml_export = GraphToXMLExport(
         config.dataset,
         source_graph=target_graph,
-        target_path=os.path.join(output_folder, "pgm_result.xml"),
+        target_path=os.path.join(output_folder, "pgm_sv.xml"),
     )
     rdfxml_export.export()

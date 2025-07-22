@@ -33,6 +33,8 @@ from cgmes2pgm_suite.state_estimation import (
 class Steps:
     """Steps to be executed in the application.
     Attributes:
+        own_fuseki_container (bool): Whether to use a Fuseki Docker container.
+            Default is False.
         upload_xml_files (bool): Whether to upload XML files.
             Default is False.
         measurement_simulation (bool): Whether to run the measurement simulation.
@@ -41,6 +43,7 @@ class Steps:
             Default is True.
     """
 
+    own_fuseki_container: bool = False
     upload_xml_files: bool = False
     measurement_simulation: bool = False
     stes: bool = True
