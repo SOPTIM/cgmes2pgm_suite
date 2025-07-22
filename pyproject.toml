@@ -29,7 +29,10 @@ Issues = "https://github.com/SOPTIM/cgmes2pgm_suite/issues"
 
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=62.3", "wheel"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
@@ -43,8 +46,10 @@ disable_error_code = "import-untyped"
 [tool.pylint.'MESSAGES CONTROL']
 disable = "C0114, C0115, C0116"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+markers = ["integration: mark test as integration test"]

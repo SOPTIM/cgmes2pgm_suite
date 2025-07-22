@@ -1,0 +1,27 @@
+# Example configuration file for measurement ranges
+Seed: 42
+VoltageRangesByNominalVoltage:
+  Measurement:
+    applyRange: true
+    zeroThreshold: 0.5
+  Default:
+    Min: 0.95
+    Max: 1.05
+    Sigma: 5
+  Discrete: # in kV for node nominalVoltage in kV
+    - { Min: 0, Max: 110, Sigma: 1 }
+    - { Min: 110, Max: 220, Sigma: 3 }
+    - { Min: 220, Max: 420, Sigma: 5 }
+
+PowerRangesByNominalVoltage:
+  Measurement:
+    applyRange: true
+    zeroThreshold: 0.5
+  Default:
+    Min: 0.95
+    Max: 1.05
+    Sigma: 10
+  Discrete: # in MW/MVA for node nominalVoltage in kV
+    - { Min: 0, Max: 110, Sigma: 1 }
+    - { Min: 110, Max: 220, Sigma: 5 }
+    - { Min: 220, Max: 420, Sigma: 10 }

@@ -1,0 +1,108 @@
+Name: "PST3"
+OutputFolder: "../../out/PST3"
+XmlFileLocation: "../../data/conformity/PST3"
+
+DataSource:
+  BaseUrl: "http://localhost:3030/PST3"
+  Graphs:
+    OP: "/op"
+    MEAS: "/op"
+    SV: "/sv"
+  CIM-Namespace: "http://iec.ch/TC57/CIM100#"
+
+Steps:
+  OwnFusekiContainer: false
+  UploadXmlFiles: true
+  MeasurementSimulation: true
+  Stes: true
+
+MeasurementSimulation:
+  Ranges: "../meas_ranges.yaml"
+
+Converter:
+  onlyTopoIsland: false # convert only elements in a topological island
+  # topoIslandName: "name" # convert only elements in a specific topological island
+  sourcesFromSV: false # Add source from SV (cim:TopologicalIsland.AngleRefTopologicalNode)
+  NetworkSplitting:
+    Enable: false
+    AddSources: false # Add sources instead of loads
+    ## only following branches
+    Branches:
+      active: "cut1" # Select set of substations
+      cut1: []
+    ## only branches between substations in following list and the rest of the network
+    Substations:
+      active: "cut1" # Select set of substations
+      cut1: []
+
+  MeasurementSubstitutions:
+    PowerFlowSigma:
+      # Sigma value is missing for a P/Q measurement, then use the following values depending on the nominal voltage of the node
+      Sigma: 10 # MW/MVar
+      Discrete:
+        - { NomV: 380.0, Sigma: 20 }
+        - { NomV: 220.0, Sigma: 15 }
+    UseSSHValues:
+      # P and Q measurements are missing for an appliance, then use the SSH values
+      Enable: false
+      Sigma: 20 # MW/MVar
+    UseNominalVoltages:
+      # Voltage measurement is missing for a node, then derive measurement from nominal voltage
+      Enable: false
+      Sigma: 10 # kV
+      NomvToMeasvFactor: 1.05 # 5% higher than nominal voltage
+      DiscreteMeas:
+        380: 410
+        220: 231
+      DiscreteSigma:
+        380: 20
+        220: 15
+    PassiveNodes:
+      # Nodes without appliances. Add load/generation to compensate for flow imbalances
+      Enable: false
+      Sigma: 30 # kV
+      ApplianceType: "sym_load" # sym_load, sym_gen
+    ImeasUsedForQCalc:
+      Enable: false
+      Sigma: 30 # MVar
+    BranchMeasurements:
+      MirrorMeasurements:
+        # if measurement available only on one side, use negated valued on the other side
+        Enable: false
+        SigmaFactor: 1.1 # 10% higher than original value
+      ZeroMissingMeasurements:
+        # if both measurements are missing, use zero value
+        Enable: false
+        Sigma: 20 # MW/MVar
+      ZeroReplacementSources:
+        # if line is cut and replaced with two sources AND both measurements are missing, use zero value for sources
+        Enable: false
+        Sigma: 20 # MW/MVar
+    IncompleteMeasurements:
+      UseSSHValues:
+        # One measurement (P or Q) is present for an appliance, but not the other.
+        # Use the SSH value for the missing measurement
+        Enable: false
+        Sigma: 20 # MW/MVar
+      UseBalanceValues:
+        # One measurement (P or Q) is present for a branch, but not the other.
+        # Lookup balance value on one of the nodes and use it for the missing measurement.
+        # Also apply the balance value for the mirrored sensors.
+        Enable: false
+        Sigma: 20 # MW/MVar
+
+Stes:
+  PgmCalculationParameters:
+    Threads: -1
+    MaxIterations: 100
+    ErrorTolerance: 1.e-6
+  ## compute subnets separately instead of all of them together
+  ComputeIslandsSeparately: false
+  ## empty list to compute all subnets, or list of subnet names, e.g. `["subnet_1", "subnet_4"]`
+  ComputeOnlySubnets: []
+  ## after splitting subnets, reconnect branches consecutively and compute the growing network
+  ReconnectBranches: false
+
+Logging:
+  Level: "INFO" #CRITICAL, ERROR, WARNING, INFO, DEBUG
+  File: "PST3.log"
