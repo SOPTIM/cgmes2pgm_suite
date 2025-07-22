@@ -5,6 +5,8 @@ It focuses on performing the state estimation on CGMES datasets.
 
 ## Features
 
+- Start an Apache Jena Fuseki as docker container
+- Upload Datasets to a SPARQL endpoint
 - Human readable exports of PGM Datasets in TXT and Excel
 - Create SV-Profile from PGM Results
 - Debug state estimation by manipulating datasets (e.g., subnet splitting)
@@ -15,19 +17,16 @@ It focuses on performing the state estimation on CGMES datasets.
 
 ## Installation
 
-### Install from PyPI
-
 The package can be installed via pip:
 
 ```bash
 pip install cgmes2pgm_suite
 ```
 
+To start an Apache Jena Fuseki server via this package, Docker is required.
+See [Docker installation guide](https://docs.docker.com/engine/install/).
+
 ## Usage
-
-[Example](./example) contains examples on how to use the package.
-
-### Running as Standalone
 
 This package can be run as a standalone application, performing the conversion and running PGM's state estimation. To do so, you need to install the package and then run the following command:
 
@@ -38,11 +37,44 @@ python -m cgmes2pgm_suite --config <path_to_config_file>
 The provided configuration file contains the dataset configuration and the parameters for the conversion and state estimation.
 An example configuration file can be found in [/example](./example).
 
+### Quick Start
+
+For a quick start, we recommend cloning this project and using the provided test datasets.
+
+If the project is cloned, setup the environment and install the package:
+
+```bash
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+pre-commit install
+```
+
+To run the Conformity Datasets, you need to download them from [ENTSO-E CIM Conformity and Interoperability](https://www.entsoe.eu/data/cim/cim-conformity-and-interoperability/) respecting their License.
+Place the rdf/xml files of each dataset in the respective subdirectory of `tests/datasets`.
+
+Afterwards, you can run all datasets using:
+
+```bash
+pytest -m "integration"
+```
+
+> Note: Running the tests creates a Fuseki Docker container on port 3030.
+> The container is automatically removed after the tests are finished.
+
+The results of the tests can be found in the `tests/out` directory.
+
+If you want to add your own datasets, the following steps are required:
+
+- Place the rdf/xml files in the `tests/data/` directory
+- Create a configuration file in the `tests/configs/` directory, by copying an existing one
+- Update the name, output directory and location of the rdf/xml files in the new configuration file
+
 ### Datasets
 
 The conversion, measurement simulation and state estimation has been tested with the CGMES conformity datasets.
-These datasets can be obtained from [ENTSO-E CIM Conformity and Interoperability](https://www.entsoe.eu/data/cim/cim-conformity-and-interoperability/)
-respecting their License.
 
 The following datasets have been tested:
 
@@ -57,15 +89,9 @@ The following datasets have been tested:
 | RealGrid | 6051 | 🟡 | Requires smaller sigmas in measurement simulation to converge |
 | FullGrid | 26 | ? | SV-Profile does not contain power flows for all branches, resulting in an insufficient amount of simulated measurements |
 
-The configuration used for the `SmallGrid` dataset is located at [./example/SmallGrid.yaml](./example/SmallGrid.yaml) and can be executed with the following command:
+> Dataset Version: CGMES Conformity Assessment Scheme Test Configurations v3.0.2
 
-```bash
-python -m cgmes2pgm_suite --config ./example/SmallGrid.yaml
-```
-
-See [state_estimation.ipynb](./example/state_estimation.ipynb) on how to create the required SPARQL endpoint.
-
-Dataset Version: CGMES Conformity Assessment Scheme Test Configurations v3.0.2
+The used configuration files can be found in the [/tests/configs](./tests/configs) directory.
 
 ## License
 
