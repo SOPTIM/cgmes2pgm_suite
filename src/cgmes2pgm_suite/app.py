@@ -129,10 +129,6 @@ def _read_config(config_path) -> SuiteConfiguration:
     return config
 
 
-# Module-level constant for used profiles
-USED_PROFILES = {"EQ", "OP", "MEAS", "SV", "TP", "SSH"}
-
-
 def _upload_files(config: SuiteConfiguration):
     with Timer("Importing XML files", loglevel=logging.INFO):
         graph = "default"
@@ -147,7 +143,7 @@ def _upload_files(config: SuiteConfiguration):
         files = [
             os.path.join(directory, f)
             for f in os.listdir(directory)
-            if f.endswith(".xml") and any(profile in f for profile in USED_PROFILES)
+            if f.endswith(".xml")
         ]
 
         importer.import_files(files)
