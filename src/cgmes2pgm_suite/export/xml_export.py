@@ -53,7 +53,7 @@ class GraphToXMLExport:
         with CimXmlBuilder(
             path=self.target_path, namespaces=self.dataset.get_prefixes()
         ) as file_builder:
-            triples = self._get_all_tuples()
+            triples = self._get_all_triples()
             grouped = triples.groupby("s")
             model_header_subject = self._get_model_header()
             subjects = list(grouped.groups.keys())
@@ -94,7 +94,7 @@ class GraphToXMLExport:
         else:
             rdf_object.add_attribute(name=predicate, value=str(obj))
 
-    def _get_all_tuples(self) -> pd.DataFrame:
+    def _get_all_triples(self) -> pd.DataFrame:
 
         query_named = f"""
         SELECT ?s ?p ?o (isIRI(?o) as ?isIRI)
