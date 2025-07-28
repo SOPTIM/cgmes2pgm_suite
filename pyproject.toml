@@ -29,10 +29,13 @@ Issues = "https://github.com/SOPTIM/cgmes2pgm_suite/issues"
 [project.optional-dependencies]
 dev = [
     "black>=24.10.0",
+    "build>=1.2.0",
     "isort>=6.0.1",
     "ipykernel>=6.29.5",
     "jupyter_core>=5.8.1",
+    "pre_commit>=4.0.0",
     "pytest>=8.4.1",
+    "twine>=6.1.0",
 ]
 
 [build-system]
