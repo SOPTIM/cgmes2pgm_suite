@@ -33,10 +33,15 @@ from cgmes2pgm_suite.state_estimation import (
 class Steps:
     """Steps to be executed in the application.
     Attributes:
+        upload_xml_files (bool): Whether to upload XML files.
+            Default is False.
         measurement_simulation (bool): Whether to run the measurement simulation.
+            Default is False.
         stes (bool): Whether to run the state estimation.
+            Default is True.
     """
 
+    upload_xml_files: bool = False
     measurement_simulation: bool = False
     stes: bool = True
 
@@ -102,6 +107,9 @@ class SuiteConfiguration:
         measurement_simulation (MeasurementSimulationConfiguration):
             Measurement simulation configuration.
         output_folder (str): Output folder for results.
+        xml_file_location (str): Directory of the XML files to import (optional).
+            All xml files in this directory will be imported.
+            Import needs to be enabled in the steps configuration.
     """
 
     dataset: CgmesDataset
@@ -111,3 +119,4 @@ class SuiteConfiguration:
     measurement_simulation: MeasurementSimulationConfiguration
     logging_config: LoggingConfiguration
     output_folder: str
+    xml_file_location: str = ""

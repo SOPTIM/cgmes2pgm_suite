@@ -44,9 +44,9 @@ class ValueSourceBuilder:
         ]
         df["rdf:type"] = f"<{self._datasource.cim_namespace}MeasurementValueSource>"
 
-        # mrids in sources to uri
+        # mrids in sources to urn
         for source in MeasurementValueSource:
-            self._sources[source] = self._datasource.mrid_to_uri(self._sources[source])
+            self._sources[source] = self._datasource.mrid_to_urn(self._sources[source])
 
         self._datasource.insert_df(df, Profile.OP)
 

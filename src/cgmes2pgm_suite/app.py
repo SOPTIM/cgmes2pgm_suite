@@ -32,6 +32,7 @@ from cgmes2pgm_suite.export import (
     TextExport,
 )
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
+from cgmes2pgm_suite.rdf_store import RdfXmlImport
 from cgmes2pgm_suite.state_estimation import (
     StateEstimationResult,
     StateEstimationWrapper,
@@ -44,6 +45,10 @@ def main():
 
 
 def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
+
+    if config.steps.upload_xml_files:
+        _upload_files(config)
+
     if config.steps.measurement_simulation:
         builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
         builder.build_from_sv()
@@ -51,21 +56,23 @@ def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
 
     extra_info, input_data = _convert_cgmes(config.dataset, config.converter_options)
 
-    if config.steps.stes:
-        state_estimation = StateEstimationWrapper(
-            input_data,
-            extra_info,
-            config.stes_options,
-        )
-        results = state_estimation.run()
+    if not config.steps.stes:
+        return None
 
-        if isinstance(results, StateEstimationResult):
-            print(results)
-            _export_run(results, config.output_folder, config)
-        else:  # List of results
-            _export_runs(results, config.output_folder, config)
+    state_estimation = StateEstimationWrapper(
+        input_data,
+        extra_info,
+        config.stes_options,
+    )
+    results = state_estimation.run()
 
-        return results
+    if isinstance(results, StateEstimationResult):
+        print(results)
+        _export_run(results, config.output_folder, config)
+    else:  # List of results
+        _export_runs(results, config.output_folder, config)
+
+    return results
 
 
 def _get_config_path() -> str:
@@ -95,6 +102,16 @@ def _read_config(config_path) -> SuiteConfiguration:
     config.logging_config.configure_logging()
 
     return config
+
+
+def _upload_files(config: SuiteConfiguration):
+    with Timer("Importing XML files", loglevel=logging.INFO):
+        graph = "default"
+        config.dataset.drop_graph(graph)
+        importer = RdfXmlImport(dataset=config.dataset, target_graph=graph)
+        importer.import_directory(
+            config.xml_file_location,
+        )
 
 
 def _convert_cgmes(ds, options):
