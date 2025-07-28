@@ -144,7 +144,7 @@ class StateEstimationWrapper:
                     run_name, self.input_data, self.extra_info, result, params
                 )
             )
-        except (SparseMatrixError, IterationDiverge) as _:
+        except (SparseMatrixError, IterationDiverge) as e:
             self._results.append(
                 StateEstimationResult(
                     run_name,
@@ -154,6 +154,7 @@ class StateEstimationWrapper:
                     params,
                 )
             )
+            raise e
 
     def _reconnect_branches(self):
         """Consecutively reconnect previously disabled branches
@@ -273,6 +274,10 @@ class StateEstimationWrapper:
             except (SparseMatrixError, IterationDiverge) as _:
                 ignore_branches.add(pgm_id)
                 connect_branch(topo_item, current_topo, connect=False)
+                logging.warning(
+                    "Reconnecting branch '%s' failed, disabling it again",
+                    line_name,
+                )
 
         ignored_branch_names = [
             main_topo[_id]["_extra"]["_name"] for _id in ignore_branches

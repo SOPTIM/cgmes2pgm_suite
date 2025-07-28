@@ -37,7 +37,7 @@ class CimXmlObject:
         Adds an attribute to the object.
 
         Args:
-            name (str): The name of the attribute
+            name (str): The name of the attribute / predicate
             value (str): The value of the attribute
         """
 
@@ -48,7 +48,7 @@ class CimXmlObject:
         Adds a reference to another object.
 
         Args:
-            name (str): The name of the reference
+            name (str): The name of the reference / predicate
             iri (str): The reference of the referenced object
         Raises:
             ValueError: If the UUID format is invalid.

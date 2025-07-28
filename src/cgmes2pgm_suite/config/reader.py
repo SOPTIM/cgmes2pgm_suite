@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import os
 import re
-import sys
 
 import yaml
 from cgmes2pgm_converter.common import (
@@ -83,7 +81,7 @@ class SuiteConfigReader:
         )
 
         return SuiteConfiguration(
-            name=self._config.get("Name", "dataset"),
+            name=self._config.get("Name", "dataset_name"),
             dataset=self._read_dataset(),
             converter_options=self._read_converter_options(),
             stes_options=self._read_stes_parameter(),

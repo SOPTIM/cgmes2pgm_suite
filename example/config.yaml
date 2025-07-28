@@ -12,6 +12,7 @@ DataSource:
     MEAS: "/meas" # Target graph for MeasurementSimulation
     SV: "/sv" # Target graph for SV-Profile Export
   CIM-Namespace: "http://iec.ch/TC57/CIM100#"
+  # CIM-Namespace: "http://iec.ch/TC57/2013/CIM-schema-cim16#"
 
 Steps:
   OwnFusekiContainer: false
@@ -28,8 +29,7 @@ Converter:
   sourcesFromSV: false # Add source from SV (cim:TopologicalIsland.AngleRefTopologicalNode)
   NetworkSplitting:
     Enable: false
-    AddSources: false # Add sources instead of loads
-    ## only following branches
+    AddSources: false # Add sources instead of loads (if the network is split into multiple islands, all islands can be calculated)
     Branches:
       active: "cut1" # Select set of substations
       cut1: []
@@ -37,6 +37,65 @@ Converter:
     Substations:
       active: "cut1" # Select set of substations
       cut1: []
+
+    # If no branches nor substations are specified, all branches between all substations are split.
+    # This means, that each substation is calculated as an own island.
+
+  MeasurementSubstitutions:
+    PowerFlowSigma:
+      # Sigma value is missing for a P/Q measurement, then use the following values depending on the nominal voltage of the node
+      Sigma: 10 # MW/MVar
+      Discrete:
+        - { NomV: 380.0, Sigma: 20 }
+        - { NomV: 220.0, Sigma: 15 }
+    UseSSHValues:
+      # P and Q measurements are missing for an appliance, then use the SSH values
+      Enable: false
+      Sigma: 20 # MW/MVar
+    UseNominalVoltages:
+      # Voltage measurement is missing for a node, then derive measurement from nominal voltage
+      Enable: false
+      Sigma: 10 # kV
+      NomvToMeasvFactor: 1.05 # 5% higher than nominal voltage
+      DiscreteMeas:
+        380: 410
+        220: 231
+      DiscreteSigma:
+        380: 20
+        220: 15
+    PassiveNodes:
+      # Nodes without appliances. Add load/generation to compensate for flow imbalances
+      Enable: false
+      Sigma: 30 # kV
+      ApplianceType: "sym_load" # sym_load, sym_gen
+    ImeasUsedForQCalc:
+      Enable: false
+      Sigma: 30 # MVar
+    BranchMeasurements:
+      MirrorMeasurements:
+        # if measurement available only on one side, use negated valued on the other side
+        Enable: false
+        SigmaFactor: 1.1 # 10% higher than original value
+      ZeroMissingMeasurements:
+        # if both measurements are missing, use zero value
+        Enable: false
+        Sigma: 20 # MW/MVar
+      ZeroReplacementSources:
+        # if line is cut and replaced with two sources AND both measurements are missing, use zero value for sources
+        Enable: false
+        Sigma: 20 # MW/MVar
+    IncompleteMeasurements:
+      UseSSHValues:
+        # One measurement (P or Q) is present for an appliance, but not the other.
+        # Use the SSH value for the missing measurement
+        Enable: false
+        Sigma: 20 # MW/MVar
+      UseBalanceValues:
+        # One measurement (P or Q) is present for a branch, but not the other.
+        # Lookup balance value on one of the nodes and use it for the missing measurement.
+        # Also apply the balance value for the mirrored sensors.
+        Enable: false
+        Sigma: 20 # MW/MVar
 
 Stes:
   PgmCalculationParameters:

@@ -44,7 +44,7 @@ def main():
 
     fuseki_container = FusekiDockerContainer()
     if config.steps.own_fuseki_container:
-        fuseki_container.start(replace_existing_container=False)
+        fuseki_container.start(keep_existing_container=True)
 
     _run(config)
 
@@ -55,7 +55,7 @@ def main():
 
 def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
 
-    _check_fuseki(config)
+    _ensure_fuseki_dataset(config)
     if config.steps.upload_xml_files:
         _upload_files(config)
 
@@ -85,7 +85,7 @@ def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
     return results
 
 
-def _check_fuseki(config):
+def _ensure_fuseki_dataset(config):
     fuseki = FusekiServer("http://localhost:3030")
 
     if not fuseki.ping():
@@ -140,13 +140,7 @@ def _upload_files(config: SuiteConfiguration):
         if not os.path.isdir(directory):
             raise ValueError(f"The provided path '{directory}' is not a directory.")
 
-        files = [
-            os.path.join(directory, f)
-            for f in os.listdir(directory)
-            if f.endswith(".xml")
-        ]
-
-        importer.import_files(files)
+        importer.import_directory(directory)
 
 
 def _convert_cgmes(ds, options):
@@ -169,6 +163,7 @@ def _export_measurement_simulation(config: SuiteConfiguration):
     rdfxml_export.export()
 
     if op_graph == meas_graph:
+        logging.info("OP and MEAS graph are the same, op profile contains meas-profile")
         return
 
     rdfxml_export = GraphToXMLExport(
@@ -195,7 +190,11 @@ def _export_runs(
     results: list[StateEstimationResult], output_folder: str, config: SuiteConfiguration
 ):
     for result in results:
-        _export_run(result, os.path.join(output_folder, result.run_name), config)
+        _export_run(
+            result,
+            os.path.join(output_folder, _sanitize_dir_name(result.run_name)),
+            config,
+        )
 
 
 def _export_converted_model(result: StateEstimationResult, output_folder: str):
@@ -273,3 +272,12 @@ def _export_result_data(
         target_path=os.path.join(output_folder, "pgm_sv.xml"),
     )
     rdfxml_export.export()
+
+
+INVALID_CHARS = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"]
+
+
+def _sanitize_dir_name(name: str) -> str:
+    for char in INVALID_CHARS:
+        name = name.replace(char, "_")
+    return name

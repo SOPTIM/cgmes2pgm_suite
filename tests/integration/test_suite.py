@@ -35,7 +35,7 @@ def fuseki_server() -> Iterator[FusekiServer]:
     """Fixture to provide a Fuseki server instance."""
 
     fuseki_container = FusekiDockerContainer()
-    fuseki_container.start(replace_existing_container=False)
+    fuseki_container.start(keep_existing_container=False)
 
     fuseki_url = "http://localhost:3030"
     server = FusekiServer(fuseki_url)
@@ -102,7 +102,7 @@ def _xml_files_exist(directory) -> bool:
         return False
 
     return any(
-        f.endswith(".xml")
+        f.lower().endswith(".xml")
         for f in os.listdir(directory)
         if os.path.isfile(os.path.join(directory, f))
     )

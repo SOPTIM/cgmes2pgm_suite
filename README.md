@@ -39,20 +39,19 @@ An example configuration file can be found in [/example](./example).
 
 ### Quick Start
 
-For a quick start, we recommend cloning this project and using the provided test datasets.
+For a quick start, we recommend cloning this project and using the provided test cases.
 
 If the project is cloned, setup the environment and install the package:
 
 ```bash
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-pip install -e .
+pip install -e ".[dev]"
 pre-commit install
 ```
 
-To run the Conformity Datasets, you need to download them from [ENTSO-E CIM Conformity and Interoperability](https://www.entsoe.eu/data/cim/cim-conformity-and-interoperability/) respecting their License.
+To run the Conformity Datasets, you need to download `Test Configurations v3.0.3` from [ENTSO-E CIM Conformity and Interoperability](https://www.entsoe.eu/data/cim/cim-conformity-and-interoperability/) respecting their License.
 Place the rdf/xml files of each dataset in the respective subdirectory of `tests/datasets`.
 
 Afterwards, you can run all datasets using:

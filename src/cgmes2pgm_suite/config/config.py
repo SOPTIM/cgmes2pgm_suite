@@ -103,6 +103,7 @@ class SuiteConfiguration:
     Configuration to run cgmes2pgm_suite as an application.
 
     Attributes:
+        name (str): Name of the dataset.
         dataset (CgmesDataset): Dataset configuration.
         converter_options (ConverterOptions): Converter options configuration.
         stes_options (StesOptions): State estimation options configuration.

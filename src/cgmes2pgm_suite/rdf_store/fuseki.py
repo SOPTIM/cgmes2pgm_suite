@@ -34,7 +34,8 @@ class FusekiDatasetType(StrEnum):
 
 class FusekiServer:
     """
-    A class to configure and manage a Fuseki server.
+    A class to configure and manage a Fuseki server
+    using <https://jena.apache.org/documentation/fuseki2/fuseki-server-protocol.html>
     """
 
     def __init__(self, url: str):
@@ -78,7 +79,7 @@ class FusekiDockerContainer(FusekiServer):
         self.container: Container | None = None
         super().__init__(f"http://localhost:{self.port}")
 
-    def start(self, replace_existing_container: bool = False):
+    def start(self, keep_existing_container: bool = True):
         if self.container is not None:
             raise RuntimeError("Container is already running.")
 
@@ -89,32 +90,30 @@ class FusekiDockerContainer(FusekiServer):
             self.build_image()
 
         if self.client.containers.list(filters={"name": CONTAINER_NAME}, all=True):
-            if self._handle_existing_container(replace_existing_container):
+            existing_container = self.client.containers.get(CONTAINER_NAME)
+
+            if keep_existing_container:
+                self.container = existing_container
+                if existing_container.status != "running":
+                    self.container.start()
+                    self._wait_for_startup()
+
                 return
 
+            if existing_container.status == "running":
+                existing_container.stop()
+
+            logging.info("Stopping existing Fuseki container: %s", CONTAINER_NAME)
+            existing_container.remove(force=True)
+
         logging.info("Starting Fuseki Docker container on port %d...", self.port)
-        self.container = cast(
-            Container,
-            self.client.containers.run(
-                image=IMAGE_NAME,
-                name=CONTAINER_NAME,
-                ports={"3030/tcp": self.port},
-                detach=True,
-            ),
+        self.container = self.client.containers.run(
+            image=IMAGE_NAME,
+            name=CONTAINER_NAME,
+            ports={"3030/tcp": self.port},
+            detach=True,
         )
         self._wait_for_startup()
-
-    def _handle_existing_container(self, replace_existing_container: bool) -> bool:
-        existing_container = self.client.containers.get(CONTAINER_NAME)
-        existing_container.stop()
-        if replace_existing_container:
-            logging.info("Stopping existing Fuseki container: %s", CONTAINER_NAME)
-            self.container = existing_container
-            self.container.start()
-            self._wait_for_startup()
-            return True
-        existing_container.remove(force=True)
-        return False
 
     def stop(self):
         if self.container is not None:
