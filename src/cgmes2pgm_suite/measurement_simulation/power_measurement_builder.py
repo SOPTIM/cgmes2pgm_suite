@@ -172,6 +172,7 @@ class PowerMeasurementBuilder:
 
         vals_p_op[f"{CIM_ID_OBJ}.name"] = '"' + sv["name"] + ' P Measurement Value"'
         vals_p_op["rdf:type"] = f"<{self._datasource.cim_namespace}AnalogValue>"
+        vals_p_meas["rdf:type"] = f"<{self._datasource.cim_namespace}AnalogValue>"
 
         analogs = [self._sv_power_to_p_meas[sv] for sv in sv["sv"]]
         vals_p_op["cim:AnalogValue.Analog"] = [
@@ -205,6 +206,7 @@ class PowerMeasurementBuilder:
 
         vals_q_op[f"{CIM_ID_OBJ}.name"] = '"' + sv["name"] + ' P Measurement Value"'
         vals_q_op["rdf:type"] = f"<{self._datasource.cim_namespace}AnalogValue>"
+        vals_q_meas["rdf:type"] = f"<{self._datasource.cim_namespace}AnalogValue>"
 
         analogs = [self._sv_power_to_q_meas[sv] for sv in sv["sv"]]
         vals_q_op["cim:AnalogValue.Analog"] = [

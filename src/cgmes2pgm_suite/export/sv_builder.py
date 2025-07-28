@@ -14,8 +14,7 @@
 
 import logging
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import numpy as np
@@ -29,71 +28,8 @@ from cgmes2pgm_converter.common import (
 )
 from power_grid_model import ComponentType
 
+from cgmes2pgm_suite.common import CgmesFullModel
 from cgmes2pgm_suite.state_estimation import PgmDataset
-
-
-def _format_current_time() -> str:
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat(sep="T")
-        .replace("+00:00", "Z")
-    )
-
-
-@dataclass
-class CgmesFullModel:
-    """Represents the Model Header of an CGMES Profile.
-
-    Attributes:
-        profile (str): Profile Type (URN/URI)
-            e. g. http://entsoe.eu/CIM/StateVariables/4/1
-        iri (str): A unique identifier for the model. Typically an URN starting with "urn:uuid:".
-        description (str): Description of the model (free text).
-        version (int): Version of the model.
-        modeling_authority_set (str): The authority that created the model.
-        dependent_on (list[str]): FullModel URN/URIs of the dependent profiles.
-        scenario_time (str): The time of the scenario in ISO 8601 format.
-        created (str): The creation time of the model in ISO 8601 format.
-
-
-    """
-
-    profile: str
-    iri: str = field(default_factory=lambda: f"urn:uuid:{uuid.uuid4()}")
-    description: str = "Model"
-    version: int = 1
-    modeling_authority_set: str = "CGMES2PGM"
-    dependent_on: list[str] = field(default_factory=list)
-    scenario_time: str = field(default_factory=_format_current_time)
-    created: str = field(default_factory=_format_current_time)
-
-    def to_triples(self) -> list[tuple[str, str, str]]:
-        """
-        Convert the CgmesFullModel instance to RDF triples.
-
-        Returns:
-            list[tuple[str, str, str]]: A list of RDF triples representing the model.
-        """
-
-        prefix = "md:Model."
-        type_ = "<http://iec.ch/TC57/61970-552/ModelDescription/1#FullModel>"
-
-        formatted_iri = f"<{self.iri}>"
-
-        return [
-            (formatted_iri, "rdf:type", type_),
-            (formatted_iri, f"{prefix}scenarioTime", f'"{self.scenario_time}"'),
-            (formatted_iri, f"{prefix}created", f'"{self.created}"'),
-            (formatted_iri, f"{prefix}description", f'"{self.description}"'),
-            (formatted_iri, f"{prefix}version", f'"{self.version}"'),
-            (formatted_iri, f"{prefix}profile", f'"{self.profile}"'),
-            (
-                formatted_iri,
-                f"{prefix}modelingAuthoritySet",
-                f'"{self.modeling_authority_set}"',
-            ),
-        ]
 
 
 @dataclass
@@ -111,7 +47,7 @@ class TopologicalIsland:
         Convert the TopologicalIsland instance to RDF triples.
 
         Returns:
-            list[tuple[str, str, str]]: A list of RDF triples representing the TopologicalIsland.
+            list[tuple[str, str, str]]: List of RDF triples representing the TopologicalIsland
         """
         CLS = "cim:TopologicalIsland"
         triples = [
@@ -137,10 +73,10 @@ class SvProfileBuilder:
     Generates the state variable (SV) profile for a provided power flow or state estimation result.
 
     Attributes:
-        cgmes_dataset (CgmesDataset): The CGMES dataset to save the SV-profile to.
-        pgm_dataset (PgmDataset): The PGM dataset to convert to a state variable profile.
-        model_info (CgmesFullModel): The model information to include in the SV-profile.
-        target_graph (str): The name of the target graph to write the SV-profile to.
+        cgmes_dataset (CgmesDataset): The CGMES dataset to save the SV-profile to
+        pgm_dataset (PgmDataset): The PGM dataset to convert to a state variable profile
+        model_info (CgmesFullModel): The model information to include in the SV-profile
+        target_graph (str): The name of the target graph to write the SV-profile to
     """
 
     def __init__(

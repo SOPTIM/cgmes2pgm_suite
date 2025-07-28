@@ -144,7 +144,7 @@ class StateEstimationWrapper:
                     run_name, self.input_data, self.extra_info, result, params
                 )
             )
-        except (SparseMatrixError, IterationDiverge) as e:
+        except (SparseMatrixError, IterationDiverge) as _:
             self._results.append(
                 StateEstimationResult(
                     run_name,
@@ -154,7 +154,6 @@ class StateEstimationWrapper:
                     params,
                 )
             )
-            raise e
 
     def _reconnect_branches(self):
         """Consecutively reconnect previously disabled branches

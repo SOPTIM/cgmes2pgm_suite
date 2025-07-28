@@ -1,6 +1,6 @@
 [project]
 name = "cgmes2pgm_suite"
-version = "0.1.0"
+version = "0.2.0"
 description = "Additional tools for cgmes2pgm_converter to integrate PowerGridModel with the Common Grid Model Exchange Standard (CGMES)"
 authors = [
     { name = "Lars Friedrich, Eduard Fried, Udo Schmitz", email = "powergridmodel@soptim.de" },

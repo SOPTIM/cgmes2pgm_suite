@@ -24,6 +24,7 @@ from power_grid_model_io.converters import PgmJsonConverter
 from cgmes2pgm_suite.common import NodeBalance
 from cgmes2pgm_suite.config import SuiteConfigReader, SuiteConfiguration
 from cgmes2pgm_suite.export import (
+    GraphToXMLExport,
     NodeBalanceExport,
     ResultTextExport,
     StesResultExcelExport,
@@ -38,11 +39,15 @@ from cgmes2pgm_suite.state_estimation import (
 
 
 def main():
-    config = _read_config()
+    config = _read_config(_get_config_path())
+    _run(config)
 
+
+def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
     if config.steps.measurement_simulation:
         builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
         builder.build_from_sv()
+        _export_measurement_simulation(config)
 
     extra_info, input_data = _convert_cgmes(config.dataset, config.converter_options)
 
@@ -60,8 +65,10 @@ def main():
         else:  # List of results
             _export_runs(results, config.output_folder, config)
 
+        return results
 
-def _read_config() -> SuiteConfiguration:
+
+def _get_config_path() -> str:
     parser = argparse.ArgumentParser(description="Convert CGMES to PGM")
     parser.add_argument(
         "--config",
@@ -78,8 +85,12 @@ def _read_config() -> SuiteConfiguration:
     if not os.path.isfile(args.config):
         logging.error("--config: path is not a file")
         sys.exit(1)
+    return args.config
 
-    reader = SuiteConfigReader(args.config)
+
+def _read_config(config_path) -> SuiteConfiguration:
+
+    reader = SuiteConfigReader(config_path)
     config = reader.read()
     config.logging_config.configure_logging()
 
@@ -93,6 +104,27 @@ def _convert_cgmes(ds, options):
         input_data, extra_info = converter.convert()
 
     return extra_info, input_data
+
+
+def _export_measurement_simulation(config: SuiteConfiguration):
+    op_graph = config.dataset.graphs[Profile.OP]
+    meas_graph = config.dataset.graphs[Profile.MEAS]
+    rdfxml_export = GraphToXMLExport(
+        config.dataset,
+        source_graph=op_graph,
+        target_path=os.path.join(config.output_folder, "op.xml"),
+    )
+    rdfxml_export.export()
+
+    if op_graph == meas_graph:
+        return
+
+    rdfxml_export = GraphToXMLExport(
+        config.dataset,
+        source_graph=meas_graph,
+        target_path=os.path.join(config.output_folder, "meas.xml"),
+    )
+    rdfxml_export.export()
 
 
 def _export_run(
@@ -175,9 +207,17 @@ def _export_result_data(
         logging.warning("No SV profile url defined, skipping SV profile export")
         return
 
+    target_graph = config.dataset.graphs[Profile.SV]
     sv_profile_builder = SvProfileBuilder(
         config.dataset,
         result,
-        target_graph=config.dataset.graphs[Profile.SV],
+        target_graph=target_graph,
     )
     sv_profile_builder.build(True)
+
+    rdfxml_export = GraphToXMLExport(
+        config.dataset,
+        source_graph=target_graph,
+        target_path=os.path.join(output_folder, "pgm_result.xml"),
+    )
+    rdfxml_export.export()
