@@ -47,7 +47,7 @@ class TopologicalIsland:
         Convert the TopologicalIsland instance to RDF triples.
 
         Returns:
-            list[tuple[str, str, str]]: List of RDF triples representing the TopologicalIsland
+            list[tuple[str, str, str]]: List of RDF triples representing the TopologicalIsland.
         """
         CLS = "cim:TopologicalIsland"
         triples = [
@@ -73,10 +73,10 @@ class SvProfileBuilder:
     Generates the state variable (SV) profile for a provided power flow or state estimation result.
 
     Attributes:
-        cgmes_dataset (CgmesDataset): The CGMES dataset to save the SV-profile to
-        pgm_dataset (PgmDataset): The PGM dataset to convert to a state variable profile
-        model_info (CgmesFullModel): The model information to include in the SV-profile
-        target_graph (str): The name of the target graph to write the SV-profile to
+        cgmes_dataset (CgmesDataset): The CGMES dataset to save the SV-profile to.
+        pgm_dataset (PgmDataset): The PGM dataset to convert to a state variable profile.
+        model_info (CgmesFullModel): The model information to include in the SV-profile.
+        target_graph (str): The name of the target graph to write the SV-profile to.
     """
 
     def __init__(

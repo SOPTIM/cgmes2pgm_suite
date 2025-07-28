@@ -79,7 +79,7 @@ class RdfXmlImport:
         files = [
             os.path.join(directory, f)
             for f in os.listdir(directory)
-            if f.endswith(".xml")
+            if f.lower().endswith(".xml")
         ]
 
         self.import_files(files)
@@ -94,7 +94,7 @@ class RdfXmlImport:
     def _add_triples(self):
         triples = []
         for s, p, o in self._graph:
-            triples.append(self._format_tuple((str(s), str(p), str(o))))
+            triples.append(self._format_triple((str(s), str(p), str(o))))
 
         self.dataset.insert_triples(
             triples=triples,
@@ -102,7 +102,7 @@ class RdfXmlImport:
         )
         self._graph = Graph()
 
-    def _format_tuple(self, triple: tuple[str, str, str]):
+    def _format_triple(self, triple: tuple[str, str, str]):
         triple_list = list(triple)
         for i, item in enumerate(triple_list):
 

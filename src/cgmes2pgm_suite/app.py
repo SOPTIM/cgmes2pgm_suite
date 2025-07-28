@@ -32,7 +32,7 @@ from cgmes2pgm_suite.export import (
     TextExport,
 )
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
-from cgmes2pgm_suite.rdf_store import RdfXmlImport
+from cgmes2pgm_suite.rdf_store import FusekiDockerContainer, FusekiServer, RdfXmlImport
 from cgmes2pgm_suite.state_estimation import (
     StateEstimationResult,
     StateEstimationWrapper,
@@ -41,11 +41,21 @@ from cgmes2pgm_suite.state_estimation import (
 
 def main():
     config = _read_config(_get_config_path())
+
+    fuseki_container = FusekiDockerContainer()
+    if config.steps.own_fuseki_container:
+        fuseki_container.start(keep_existing_container=True)
+
     _run(config)
+
+    if config.steps.own_fuseki_container:
+        fuseki_container.stop()
+        fuseki_container.remove()
 
 
 def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
 
+    _ensure_fuseki_dataset(config)
     if config.steps.upload_xml_files:
         _upload_files(config)
 
@@ -73,6 +83,21 @@ def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
         _export_runs(results, config.output_folder, config)
 
     return results
+
+
+def _ensure_fuseki_dataset(config):
+    fuseki = FusekiServer("http://localhost:3030")
+
+    if not fuseki.ping():
+        raise RuntimeError("Fuseki server is not running or not reachable.")
+
+    if not fuseki.dataset_exists(config.name):
+        fuseki.create_dataset(config.name)
+
+    if not fuseki.dataset_exists(config.name):
+        raise RuntimeError(
+            f"Could not create dataset '{config.name}' on Fuseki server at {fuseki.url}"
+        )
 
 
 def _get_config_path() -> str:
@@ -107,11 +132,15 @@ def _read_config(config_path) -> SuiteConfiguration:
 def _upload_files(config: SuiteConfiguration):
     with Timer("Importing XML files", loglevel=logging.INFO):
         graph = "default"
+
         config.dataset.drop_graph(graph)
         importer = RdfXmlImport(dataset=config.dataset, target_graph=graph)
-        importer.import_directory(
-            config.xml_file_location,
-        )
+
+        directory = config.xml_file_location
+        if not os.path.isdir(directory):
+            raise ValueError(f"The provided path '{directory}' is not a directory.")
+
+        importer.import_directory(directory)
 
 
 def _convert_cgmes(ds, options):
@@ -134,6 +163,7 @@ def _export_measurement_simulation(config: SuiteConfiguration):
     rdfxml_export.export()
 
     if op_graph == meas_graph:
+        logging.info("OP and MEAS graph are the same, op profile contains meas-profile")
         return
 
     rdfxml_export = GraphToXMLExport(
@@ -160,7 +190,11 @@ def _export_runs(
     results: list[StateEstimationResult], output_folder: str, config: SuiteConfiguration
 ):
     for result in results:
-        _export_run(result, os.path.join(output_folder, result.run_name), config)
+        _export_run(
+            result,
+            os.path.join(output_folder, _sanitize_dir_name(result.run_name)),
+            config,
+        )
 
 
 def _export_converted_model(result: StateEstimationResult, output_folder: str):
@@ -235,6 +269,15 @@ def _export_result_data(
     rdfxml_export = GraphToXMLExport(
         config.dataset,
         source_graph=target_graph,
-        target_path=os.path.join(output_folder, "pgm_result.xml"),
+        target_path=os.path.join(output_folder, "pgm_sv.xml"),
     )
     rdfxml_export.export()
+
+
+INVALID_CHARS = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"]
+
+
+def _sanitize_dir_name(name: str) -> str:
+    for char in INVALID_CHARS:
+        name = name.replace(char, "_")
+    return name

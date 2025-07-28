@@ -1,18 +1,14 @@
-#
-# Example Configuration for `SuiteConfigReader`
-#
-Name: "dataset_name"
-OutputFolder: "../../out/dataset_name"
-XmlFileLocation: "../../data/conformity/dataset_name"
+Name: "MicroGrid"
+OutputFolder: "../../out/MicroGrid"
+XmlFileLocation: "../../data/conformity/MicroGrid"
 
 DataSource:
-  BaseUrl: "http://localhost:3030/dataset_name"
+  BaseUrl: "http://localhost:3030/MicroGrid"
   Graphs:
-    OP: "/op" # Target graph for MeasurementSimulation
-    MEAS: "/meas" # Target graph for MeasurementSimulation
-    SV: "/sv" # Target graph for SV-Profile Export
+    OP: "/op"
+    MEAS: "/op"
+    SV: "/sv"
   CIM-Namespace: "http://iec.ch/TC57/CIM100#"
-  # CIM-Namespace: "http://iec.ch/TC57/2013/CIM-schema-cim16#"
 
 Steps:
   OwnFusekiContainer: false
@@ -21,25 +17,23 @@ Steps:
   Stes: true
 
 MeasurementSimulation:
-  Ranges: "./meas_ranges.yaml"
+  Ranges: "../meas_ranges.yaml"
 
 Converter:
   onlyTopoIsland: false # convert only elements in a topological island
   # topoIslandName: "name" # convert only elements in a specific topological island
   sourcesFromSV: false # Add source from SV (cim:TopologicalIsland.AngleRefTopologicalNode)
   NetworkSplitting:
-    Enable: false
-    AddSources: false # Add sources instead of loads (if the network is split into multiple islands, all islands can be calculated)
+    Enable: true
+    AddSources: false # Add sources instead of loads
+    ## only following branches
     Branches:
-      active: "cut1" # Select set of substations
+      active: "BE-TR2_2" # Select set of substations
       cut1: []
     ## only branches between substations in following list and the rest of the network
     Substations:
       active: "cut1" # Select set of substations
       cut1: []
-
-    # If no branches nor substations are specified, all branches between all substations are split.
-    # This means, that each substation is calculated as an own island.
 
   MeasurementSubstitutions:
     PowerFlowSigma:
@@ -111,4 +105,4 @@ Stes:
 
 Logging:
   Level: "INFO" #CRITICAL, ERROR, WARNING, INFO, DEBUG
-  File: "dataset_name.log"
+  File: "MicroGrid.log"

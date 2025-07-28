@@ -13,13 +13,12 @@ license-files = ["LICENSE"]
 keywords = ["cgmes", "pgm", "State Estimation", "Power Grid Model"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.13",
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
 ]
 
-requires-python = ">=3.10.12"
+requires-python = ">=3.12.3"
 dynamic = ["dependencies"]
 
 [project.urls]
@@ -27,12 +26,27 @@ Homepage = "https://github.com/SOPTIM/cgmes2pgm_suite"
 Repository = "https://github.com/SOPTIM/cgmes2pgm_suite"
 Issues = "https://github.com/SOPTIM/cgmes2pgm_suite/issues"
 
+[project.optional-dependencies]
+dev = [
+    "black>=24.10.0",
+    "isort>=6.0.1",
+    "ipykernel>=6.29.5",
+    "jupyter_core>=5.8.1",
+    "pytest>=8.4.1",
+]
+
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=62.3", "wheel"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.package-data]
+"cgmes2pgm_suite" = ["resources/docker/**/*"]
 
 [tool.mypy]
 disable_error_code = "import-untyped"
@@ -40,8 +54,10 @@ disable_error_code = "import-untyped"
 [tool.pylint.'MESSAGES CONTROL']
 disable = "C0114, C0115, C0116"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+markers = ["integration: mark test as integration test"]
