@@ -51,13 +51,13 @@ def test_measurement_consistency(fuseki_server, dataset_path):
     input_data_named, extra_info_named = converter.convert()
 
     # Export simulated measurements
+    os.makedirs(out_dir, exist_ok=True)
     move_meas_to_default(out_dir, dataset)
 
     converter = CgmesToPgmConverter(dataset)
     input_data_default, extra_info_default = converter.convert()
 
     # Export files for comparison
-    os.makedirs(out_dir, exist_ok=True)
     exporter = TextExport(
         path=f"{out_dir}/input_data_default.txt",
         data=input_data_default,
