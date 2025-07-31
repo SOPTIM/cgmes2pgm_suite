@@ -16,38 +16,16 @@
 import glob
 import os
 import shutil
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from cgmes2pgm_converter.common import CgmesDataset
 
 from cgmes2pgm_suite.app import _read_config, _run
-from cgmes2pgm_suite.rdf_store import FusekiDockerContainer, FusekiServer
 from cgmes2pgm_suite.state_estimation import StateEstimationResult
 
 # Test Passes if J < E(J) + SIGMA_J * SIGMA_THRESHOLD
 SIGMA_THRESHOLD = 3
-
-
-@pytest.fixture(scope="session")
-def fuseki_server() -> Iterator[FusekiServer]:
-    """Fixture to provide a Fuseki server instance."""
-
-    fuseki_container = FusekiDockerContainer()
-    fuseki_container.start(keep_existing_container=False)
-
-    fuseki_url = "http://localhost:3030"
-    server = FusekiServer(fuseki_url)
-
-    if not server.ping():
-        pytest.fail(f"Fuseki server at {fuseki_url} is not reachable.")
-
-    yield server
-
-    # Runs after all tests in the session
-    fuseki_container.stop()
-    fuseki_container.remove()
 
 
 def _get_config_files():
