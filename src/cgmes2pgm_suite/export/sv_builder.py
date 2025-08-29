@@ -58,11 +58,11 @@ class TopologicalIsland:
 
         if self.angle_ref_node is not None:
             triples.append(
-                (self.iri, f"{CLS}.angleRefTopologicalNode", f"<{self.angle_ref_node}>")
+                (self.iri, f"{CLS}.angleRefTopologicalNode", self.angle_ref_node)
             )
 
         triples += [
-            (self.iri, f"{CLS}.TopologicalNodes", f"<{node}>")
+            (self.iri, f"{CLS}.TopologicalNodes", node)
             for node in self.topological_nodes
         ]
         return triples
@@ -133,9 +133,7 @@ class SvProfileBuilder:
             toponode_iri = self.pgm_dataset.extra_info.get(node_id, {}).get(
                 "_mrid", None
             )
-            df.at[idx, f"{CLS}.TopologicalNode"] = (
-                f"<{toponode_iri}>" if toponode_iri else None
-            )
+            df.at[idx, f"{CLS}.TopologicalNode"] = self._get_formatted_iri(toponode_iri)
 
         # drop rows without TopologicalNode and log node ids w/o TopologicalNode
         missing_toponode = df[df[f"{CLS}.TopologicalNode"].isnull()]["_pgm_id"].tolist()
@@ -305,8 +303,10 @@ class SvProfileBuilder:
                     mrid=mrid,
                     iri=self.cgmes_dataset.mrid_to_urn(mrid),
                     name=subnet_name,
-                    topological_nodes=node_mrids,
-                    angle_ref_node=ref_node_per_subnet.get(subnet_name, None),
+                    topological_nodes=[self._get_formatted_iri(x) for x in node_mrids],
+                    angle_ref_node=self._get_formatted_iri(
+                        ref_node_per_subnet.get(subnet_name, None)
+                    ),
                 )
             )
         return islands
@@ -333,4 +333,14 @@ class SvProfileBuilder:
     def _get_terminal_from_extra_info(self, pgm_id, terminal_key):
         """Get the terminal IRI from the extra info of the PGM dataset."""
         terminal_iri = self.pgm_dataset.extra_info.get(pgm_id, {}).get(terminal_key)
-        return f"<{terminal_iri}>" if terminal_iri else None
+        return self._get_formatted_iri(terminal_iri)
+
+    def _get_formatted_iri(self, iri: str | None) -> str:
+        """Format the IRI for output."""
+        base_iri = self.cgmes_dataset.base_url + "#"
+        if iri is None:
+            return "<missing-iri>"
+        elif iri.startswith(base_iri) or iri.startswith("http"):
+            return f"<{iri}>"
+        else:
+            return f"<{base_iri}{iri}>"

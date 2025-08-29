@@ -88,7 +88,7 @@ class GraphToXMLExport:
             rdf_object.set_type(self.apply_prefix(obj))
 
         elif row["isIRI"]:
-            obj_uuid = self._to_urn(str(obj))
+            obj_uuid = self._to_urn(str(obj), is_reference=True)
             rdf_object.add_reference(name=predicate, iri=obj_uuid)
 
         else:
@@ -126,22 +126,31 @@ class GraphToXMLExport:
         # if no prefix found, return the full uri
         return predicate
 
-    def _to_urn(self, iri: str) -> str:
+    def _to_urn(self, iri: str, is_reference=False) -> str:
         """
-        Try to convert urls to urn:uuid format.
-        Only convert urls within the same dataset.
+        Replacing "{base_uri}#" with "urn:uuid:" would be nice, but only
+        works if the UUID is valid, otherwise it potentially produces
+        validation errors in other places, therefore remove the base_uri
+        but keep the "#_" for references. If the IRI already has a urn:uuid
+        format then keep it as is (assuming it is correct, or maybe was corrected
+        elsewhere).
+        Maybe later we can switch to mapping to urn:uuid again,
         e.g. localhost:3030/dataset/data#_<uuid> -> urn:uuid:<uuid>
         """
 
         if iri.startswith(self.dataset.base_url):
-            # Extract the UUID from the IRI
-            # The IRI is expected to be in the format: <dataset_base_url><some_path>#_<uuid>
-            match = re.search(r"#_(.+)$", iri)
-            if match:
-                uuid = match.group(1)
-                return f"urn:uuid:{uuid}"
-
-        return iri
+            return iri.replace(
+                self.dataset.base_url + "#", "#_" if is_reference else ""
+            )
+        elif (
+            iri.startswith("urn:uuid:")
+            or iri.startswith("http")
+            or iri.startswith("#_")
+        ):
+            # could be some other reference, e.g. 'http://iec.ch/TC57/CIM100#UnitSymbol.V' -> keep as is
+            return iri
+        else:
+            return f"#_{iri}" if is_reference else iri
 
     def _get_model_header(self) -> str:
         """Returns IRI of the model header (FullModel)"""
