@@ -73,7 +73,9 @@ class VoltageMeasurementBuilder:
         ORDER BY ?tn
         """
 
-        res = self._datasource.query(query)
+        # get IRIs with base_uri, because we are writing into the graph again and need this
+        # for referential consistency
+        res = self._datasource.query(query, remove_uuid_base_uri=False)
 
         return res
 

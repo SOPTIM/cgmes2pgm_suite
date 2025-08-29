@@ -104,15 +104,27 @@ class RdfXmlImport:
 
     def _format_triple(self, triple: tuple[str, str, str]):
         triple_list = list(triple)
+        base_iri = (
+            self.base_iri + "#" if self.base_iri != "urn:uuid:" else self.base_iri
+        )
         for i, item in enumerate(triple_list):
 
             if item.startswith(f"{TEMP_BASE_URI}#_"):
-                item = item.replace(f"{TEMP_BASE_URI}#_", self.base_iri)
+                item = item.replace(f"{TEMP_BASE_URI}#_", base_iri)
+
+            if item.startswith("urn:uuid:") and base_iri != "urn:uuid:":
+                item = item.replace("urn:uuid:", base_iri)
 
             if item.startswith("http:") or item.startswith("urn:uuid:"):
                 item = f"<{item}>"
             else:
                 item = f'"{item}"'
+
+            # String literals may have inner quotation marks that need to be escaped, e.g.:
+            # - "2" -> "2"
+            # - "this "is" important"  -> "this \"is\" important"
+            if i == 2 and item.startswith('"') and item.endswith('"'):
+                item = '"' + item[1:-1].replace('"', '\\"') + '"'
 
             triple_list[i] = item
 

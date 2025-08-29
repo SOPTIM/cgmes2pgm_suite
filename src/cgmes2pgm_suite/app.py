@@ -31,6 +31,7 @@ from cgmes2pgm_suite.export import (
     SvProfileBuilder,
     TextExport,
 )
+from cgmes2pgm_suite.export.iri_export import extra_info_with_clean_iris
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
 from cgmes2pgm_suite.rdf_store import FusekiDockerContainer, FusekiServer, RdfXmlImport
 from cgmes2pgm_suite.state_estimation import (
@@ -134,7 +135,9 @@ def _upload_files(config: SuiteConfiguration):
         graph = "default"
 
         config.dataset.drop_graph(graph)
-        importer = RdfXmlImport(dataset=config.dataset, target_graph=graph)
+        importer = RdfXmlImport(
+            dataset=config.dataset, target_graph=graph, base_iri=config.dataset.base_url
+        )
 
         directory = config.xml_file_location
         if not os.path.isdir(directory):
@@ -199,7 +202,9 @@ def _export_runs(
 
 def _export_converted_model(result: StateEstimationResult, output_folder: str):
 
-    topo = Topology(result.input_data, result.extra_info, result.result_data)
+    clean_extra_info = extra_info_with_clean_iris(result.extra_info)
+
+    topo = Topology(result.input_data, clean_extra_info, result.result_data)
     noba = NodeBalance(topo)
     noba_export = NodeBalanceExport(noba, topo)
     noba_export.print_node_balance(
@@ -209,12 +214,12 @@ def _export_converted_model(result: StateEstimationResult, output_folder: str):
     exporter = PgmJsonConverter(
         destination_file=os.path.join(output_folder, "pgm.json"),
     )
-    exporter.save(data=result.input_data, extra_info=result.extra_info)
+    exporter.save(data=result.input_data, extra_info=clean_extra_info)
 
     exporter = TextExport(
         os.path.join(output_folder, "pgm.txt"),
         result.input_data,
-        result.extra_info,
+        clean_extra_info,
         False,
     )
     exporter.export()
@@ -227,7 +232,9 @@ def _export_result_data(
     if not result.result_data:
         return
 
-    topo = Topology(result.input_data, result.extra_info, result.result_data)
+    clean_extra_info = extra_info_with_clean_iris(result.extra_info)
+
+    topo = Topology(result.input_data, clean_extra_info, result.result_data)
     noba = NodeBalance(topo)
 
     noba_export = NodeBalanceExport(noba, topo, result=True)
@@ -241,7 +248,7 @@ def _export_result_data(
     exporter = TextExport(
         os.path.join(output_folder, "pgm_result_full.txt"),
         result.result_data,
-        result.extra_info,
+        clean_extra_info,
         True,
     )
     exporter.export()
