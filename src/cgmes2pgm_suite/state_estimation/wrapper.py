@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import logging
+from typing import Optional
 
+import numpy as np
 from cgmes2pgm_converter.common import Timer, Topology
 from power_grid_model import (
     CalculationMethod,
@@ -115,7 +117,7 @@ class StateEstimationWrapper:
             self._model = PowerGridModel(sub_input_data)
 
             try:
-                self._run_pgm(f"sub_{subnet}")
+                self._run_pgm(f"{subnet}", sub_input_data)
                 logging.info("\tState Estimation for subnet %s successful", subnet)
             except (SparseMatrixError, IterationDiverge) as e:
                 logging.error(
@@ -124,12 +126,17 @@ class StateEstimationWrapper:
                     str(e).split("\n", maxsplit=1)[0],
                 )
 
-    def _run_pgm(self, run_name: str):
+    def _run_pgm(
+        self,
+        run_name: str,
+        opt_input_data: Optional[dict[ComponentType, np.ndarray]] = None,
+    ):
 
         if self._model is None:
             raise ValueError("Unexpected Error: PowerGridModel is not initialized.")
 
         params = self.stes_options.pgm_parameters
+        input_data = opt_input_data if opt_input_data is not None else self.input_data
         try:
             with Timer("State Estimation", loglevel=logging.INFO):
                 result = self._model.calculate_state_estimation(
@@ -141,14 +148,14 @@ class StateEstimationWrapper:
                 )
             self._results.append(
                 StateEstimationResult(
-                    run_name, self.input_data, self.extra_info, result, params
+                    run_name, input_data, self.extra_info, result, params
                 )
             )
         except (SparseMatrixError, IterationDiverge) as e:
             self._results.append(
                 StateEstimationResult(
                     run_name,
-                    self.input_data,
+                    input_data,
                     self.extra_info,
                     None,
                     params,
@@ -266,7 +273,7 @@ class StateEstimationWrapper:
 
             self._model = PowerGridModel(sub_input_data)
             try:
-                self._run_pgm(f"{total_counter}_add_{line_name}")
+                self._run_pgm(f"{total_counter}_add_{line_name}", sub_input_data)
 
                 connect_counter += 1
                 connected_substations.add(from_substation)
