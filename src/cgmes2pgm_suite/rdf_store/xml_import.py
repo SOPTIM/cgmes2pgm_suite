@@ -118,7 +118,7 @@ class RdfXmlImport:
             if item.startswith("http:") or item.startswith("urn:uuid:"):
                 item = f"<{item}>"
             else:
-                item = f'"{item}"'
+                item = f'"{item.strip()}"'
 
             # String literals may have inner quotation marks that need to be escaped, e.g.:
             # - "2" -> "2"
