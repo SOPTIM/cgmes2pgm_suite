@@ -9,9 +9,9 @@ VoltageRangesByNominalVoltage:
     Max: 1.05
     Sigma: 5
   Discrete: # in kV for node nominalVoltage in kV
-    - { Min: 0, Max: 110, Sigma: 1 }
-    - { Min: 110, Max: 220, Sigma: 3 }
-    - { Min: 220, Max: 420, Sigma: 5 }
+    - { Min: 0, Max: 110, Sigma: 1, SigmaFactor: 1.0 }
+    - { Min: 110, Max: 220, Sigma: 3, SigmaFactor: 1.0 }
+    - { Min: 220, Max: 420, Sigma: 5, SigmaFactor: 1.0 }
 
 PowerRangesByNominalVoltage:
   Measurement:
@@ -22,6 +22,6 @@ PowerRangesByNominalVoltage:
     Max: 1.05
     Sigma: 10
   Discrete: # in MW/MVA for node nominalVoltage in kV
-    - { Min: 0, Max: 110, Sigma: 1 }
-    - { Min: 110, Max: 220, Sigma: 5 }
-    - { Min: 220, Max: 420, Sigma: 10 }
+    - { Min: 0, Max: 110, Sigma: 1, SigmaFactor: 1.0 }
+    - { Min: 110, Max: 220, Sigma: 5, SigmaFactor: 1.0 }
+    - { Min: 220, Max: 420, Sigma: 10, SigmaFactor: 1.0 }

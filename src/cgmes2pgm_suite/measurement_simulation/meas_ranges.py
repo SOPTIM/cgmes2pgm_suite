@@ -39,6 +39,7 @@ class MeasurementRange:
     max_value: float
     accuracy: float
     sigma: float
+    sigma_factor: float = 1.0  # factor to multiply sigma when distorting measurement
 
     def _get_sigma(self) -> float:
         if self.sigma is not None:
@@ -49,7 +50,11 @@ class MeasurementRange:
         return np.abs((1 - self.accuracy) * max_abs / 3)
 
     def distort_measurement(self, value: float) -> float:
-        return float(RandomNumberGenerator.get_rng().normal(value, self._get_sigma()))
+        return float(
+            RandomNumberGenerator.get_rng().normal(
+                value, self._get_sigma() * self.sigma_factor
+            )
+        )
 
 
 class MeasurementRangeSet:
@@ -90,6 +95,7 @@ class MeasurementRangeSet:
                     range_data["Max"],
                     range_data.get("Accuracy"),
                     range_data.get("Sigma"),
+                    range_data.get("SigmaFactor", 1.0),
                 )
             )
 
@@ -98,6 +104,7 @@ class MeasurementRangeSet:
             data["Default"]["Max"],
             data["Default"].get("Accuracy"),
             data["Default"].get("Sigma"),
+            data["Default"].get("SigmaFactor", 1.0),
         )
 
         return MeasurementRangeSet(ranges, default_range, apply_range, zero_threshold)
