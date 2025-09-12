@@ -27,6 +27,12 @@ def e6(x):
 
 
 def e_deg(x):
+    if isinstance(x, pd.Series):
+        return x.apply(
+            lambda v: np.rad2deg(v) if v is not None and not pd.isna(v) else np.nan
+        )
+    if x is None or pd.isna(x):
+        return np.nan
     return np.rad2deg(x)
 
 
