@@ -86,14 +86,16 @@ def _xml_files_exist(directory) -> bool:
     )
 
 
-def _check_result(result: StateEstimationResult, config_name: str):
+def _check_result(
+    result: StateEstimationResult, config_name: str, threshold=SIGMA_THRESHOLD
+):
     """Ensure the state estimation result meets convergence and accuracy criteria."""
     assert result.converged, f"Convergence failed for {config_name}: {result}"
 
     delta = (result.j - result.e_j) / result.sigma_j
 
     # if j << e_j, test still passes (results better than expected)
-    assert delta < SIGMA_THRESHOLD, f"High delta for {config_name}: {delta:.2f}"
+    assert delta < threshold, f"High delta for {config_name}: {delta:.2f}"
 
 
 def _reset_output_dir(output_dir: str):
@@ -120,6 +122,8 @@ def _validate_state_estimation(result, config, config_name):
 
     assert result is not None, f"Got None result from {config_name}"
 
+    tolorance = config.stes_options.pgm_parameters.bad_data_tolerance
+
     results = result if isinstance(result, list) else [result]
     for res in results:
-        _check_result(res, config_name)
+        _check_result(res, config_name, tolorance)
