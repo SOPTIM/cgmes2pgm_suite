@@ -81,6 +81,9 @@ def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
         print(results)
         _export_run(results, config.output_folder, config)
     else:  # List of results
+        for res in results:
+            print(f"-----\n{res.run_name}:")
+            print(res)
         _export_runs(results, config.output_folder, config)
 
     return results
