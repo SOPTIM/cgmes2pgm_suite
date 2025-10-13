@@ -90,7 +90,7 @@ class SvProfileBuilder:
         self.pgm_dataset = pgm_dataset
         self.target_graph = target_graph
         self.model_info = model_info or CgmesFullModel(
-            profile="http://entsoe.eu/CIM/StateVariables/4/1"
+            profile=["http://entsoe.eu/CIM/StateVariables/4/1"]
         )
 
     def build(self, overwrite_existing: bool = False):

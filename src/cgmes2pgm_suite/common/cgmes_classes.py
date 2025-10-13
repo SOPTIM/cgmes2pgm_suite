@@ -43,7 +43,7 @@ class CgmesFullModel:
         created (str): The creation time of the model in ISO 8601 format
     """
 
-    profile: str
+    profile: list[str]
     iri: str = field(default_factory=lambda: f"urn:uuid:{uuid.uuid4()}")
     description: str = "Model"
     version: int = 1
@@ -71,7 +71,10 @@ class CgmesFullModel:
             (formatted_iri, f"{prefix}created", f'"{self.created}"'),
             (formatted_iri, f"{prefix}description", f'"{self.description}"'),
             (formatted_iri, f"{prefix}version", f'"{self.version}"'),
-            (formatted_iri, f"{prefix}profile", f'"{self.profile}"'),
+            *[
+                (formatted_iri, f"{prefix}profile", f'"{profile}"')
+                for profile in self.profile
+            ],
             (
                 formatted_iri,
                 f"{prefix}modelingAuthoritySet",

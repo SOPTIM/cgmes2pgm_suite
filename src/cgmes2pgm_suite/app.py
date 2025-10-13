@@ -33,7 +33,11 @@ from cgmes2pgm_suite.export import (
 )
 from cgmes2pgm_suite.export.iri_export import extra_info_with_clean_iris
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
-from cgmes2pgm_suite.rdf_store import FusekiDockerContainer, FusekiServer, RdfXmlImport
+from cgmes2pgm_suite.rdf_store import (
+    FusekiDockerContainer,
+    FusekiServer,
+    RdfXmlDirectoryImport,
+)
 from cgmes2pgm_suite.state_estimation import (
     StateEstimationResult,
     StateEstimationWrapper,
@@ -58,7 +62,7 @@ def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
 
     _ensure_fuseki_dataset(config)
     if config.steps.upload_xml_files:
-        _upload_files(config)
+        _upload_files(config, split_profiles=False)
 
     if config.steps.measurement_simulation:
         builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
@@ -130,13 +134,16 @@ def _read_config(config_path) -> SuiteConfiguration:
     return config
 
 
-def _upload_files(config: SuiteConfiguration):
+def _upload_files(config: SuiteConfiguration, split_profiles=True):
     with Timer("Importing XML files", loglevel=logging.INFO):
         graph = "default"
 
         config.dataset.drop_graph(graph)
-        importer = RdfXmlImport(
-            dataset=config.dataset, target_graph=graph, base_iri=config.dataset.base_url
+        importer = RdfXmlDirectoryImport(
+            dataset=config.dataset,
+            target_graph=graph,
+            base_iri=config.dataset.base_url,
+            split_profiles=split_profiles,
         )
 
         directory = config.xml_file_location

@@ -54,10 +54,10 @@ class MeasurementBuilder:
             )
 
         self._model_info_op = model_info_op or CgmesFullModel(
-            profile="http://iec.ch/TC57/ns/CIM/Operation/4.0"
+            profile=["http://iec.ch/TC57/ns/CIM/Operation/4.0"]
         )
         self._model_info_meas = model_info_meas or CgmesFullModel(
-            profile="http://iec.ch/TC57/ns/CIM/Operation/4.0"
+            profile=["http://iec.ch/TC57/ns/CIM/Operation/4.0"]
         )
 
         self._datasource = datasource

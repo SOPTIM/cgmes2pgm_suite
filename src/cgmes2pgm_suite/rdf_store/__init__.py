@@ -14,4 +14,6 @@
 
 
 from .fuseki import FusekiDatasetType, FusekiDockerContainer, FusekiServer
+from .xml_dir_import import RdfXmlDirectoryImport
 from .xml_import import RdfXmlImport
+from .xml_zip_import import RdfXmlZipImport

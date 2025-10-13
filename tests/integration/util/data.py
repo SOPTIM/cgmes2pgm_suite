@@ -15,7 +15,7 @@
 
 from cgmes2pgm_converter.common import CgmesDataset
 
-from cgmes2pgm_suite.rdf_store import FusekiServer, RdfXmlImport
+from cgmes2pgm_suite.rdf_store import FusekiServer, RdfXmlDirectoryImport
 
 
 def setup_dataset(
@@ -32,7 +32,9 @@ def setup_dataset(
         cim_namespace=cim_namespace,
     )
 
-    importer = RdfXmlImport(dataset, target_graph="default")
+    importer = RdfXmlDirectoryImport(
+        dataset, target_graph="default", split_profiles=False
+    )
     importer.import_directory(data_path)
 
     return dataset
