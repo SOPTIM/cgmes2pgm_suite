@@ -293,12 +293,11 @@ class RdfXmlImport:
             graph_name = self.dataset.named_graphs.determine_graph_name(
                 mas_profiles, list(mass)
             )
-
-            for p in mas_profiles:
-                self.dataset.named_graphs.add(p, graph_name)
-
             if drop_before_upload:
                 self.dataset.drop_graph(graph_name)
+
+            for p in mas_profiles:
+                self.dataset.named_graphs.add(p, graph_name, updating=update_profiles)
 
             logging.info(f"Uploading profile(s) {profiles_str} to graph: {graph_name}")
             self._add_triples(graph_name, reset_graph=True)

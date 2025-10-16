@@ -4,10 +4,6 @@ XmlFileLocation: "../../data/conformity/PST2"
 
 DataSource:
   BaseUrl: "http://localhost:3030/PST2"
-  Graphs:
-    OP: "/op"
-    MEAS: "/op"
-    SV: "/sv"
   CIM-Namespace: "http://iec.ch/TC57/CIM100#"
 
 Steps:

@@ -27,6 +27,9 @@ def _format_current_time() -> str:
     )
 
 
+CGMES2PGM_MAS = "CGMES2PGM"
+
+
 @dataclass
 class CgmesFullModel:
     """Represents the Model Header of an CGMES Profile.
@@ -47,7 +50,7 @@ class CgmesFullModel:
     iri: str = field(default_factory=lambda: f"urn:uuid:{uuid.uuid4()}")
     description: str = "Model"
     version: int = 1
-    modeling_authority_set: str = "CGMES2PGM"
+    modeling_authority_set: str = CGMES2PGM_MAS
     dependent_on: list[str] = field(default_factory=list)
     scenario_time: str = field(default_factory=_format_current_time)
     created: str = field(default_factory=_format_current_time)

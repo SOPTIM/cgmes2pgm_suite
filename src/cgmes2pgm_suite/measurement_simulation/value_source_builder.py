@@ -48,7 +48,14 @@ class ValueSourceBuilder:
         for source in MeasurementValueSource:
             self._sources[source] = self._datasource.mrid_to_urn(self._sources[source])
 
-        self._datasource.insert_df(df, Profile.OP)
+        [self._datasource.insert_df(df, pr) for pr in self._to_graph(Profile.OP)]
 
     def get_sources(self) -> dict[MeasurementValueSource, str]:
         return self._sources
+
+    def _to_graph(self, profile: Profile) -> list[Profile | str]:
+        to_graph: list[Profile | str] = [profile]
+        if not self._datasource.split_profiles:
+            to_graph.append(self._datasource.named_graphs.default_graph)
+
+        return to_graph

@@ -19,7 +19,11 @@ from cgmes2pgm_suite.rdf_store import FusekiServer, RdfXmlDirectoryImport
 
 
 def setup_dataset(
-    name, fuseki_server: FusekiServer, data_path: str, cim_namespace: str
+    name,
+    fuseki_server: FusekiServer,
+    data_path: str,
+    cim_namespace: str,
+    split_profiles=True,
 ) -> CgmesDataset:
     """Setup a Fuseki dataset and import RDF/XML data."""
 
@@ -30,10 +34,11 @@ def setup_dataset(
     dataset = CgmesDataset(
         base_url=dataset_url,
         cim_namespace=cim_namespace,
+        split_profiles=split_profiles,
     )
 
     importer = RdfXmlDirectoryImport(
-        dataset, target_graph="default", split_profiles=False
+        dataset, target_graph="default", split_profiles=split_profiles
     )
     importer.import_directory(data_path)
 
