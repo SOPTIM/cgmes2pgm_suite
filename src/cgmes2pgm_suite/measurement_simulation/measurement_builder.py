@@ -35,30 +35,24 @@ class MeasurementBuilder:
         self,
         datasource: CgmesDataset,
         config: MeasurementSimulationConfiguration,
-        model_info_op: CgmesFullModel | None = None,
-        model_info_meas: CgmesFullModel | None = None,
+        separate_models: bool = False,
     ):
 
-        if Profile.OP not in datasource.graphs:
-            raise ValueError("Requires graph name for the OP profile")
-
-        if Profile.MEAS not in datasource.graphs:
-            raise ValueError("Requires graph name for the MEAS profile")
-
-        if (
-            datasource.graphs[Profile.MEAS] == datasource.graphs[Profile.OP]
-            and model_info_meas is not None
-        ):
-            raise ValueError(
-                "Cannot use separate model info for OP and MEAS profiles if they share the same graph."
+        if separate_models:
+            self._model_info_op = CgmesFullModel(
+                profile=["http://iec.ch/TC57/ns/CIM/Operation/4.0"]
             )
-
-        self._model_info_op = model_info_op or CgmesFullModel(
-            profile="http://iec.ch/TC57/ns/CIM/Operation/4.0"
-        )
-        self._model_info_meas = model_info_meas or CgmesFullModel(
-            profile="http://iec.ch/TC57/ns/CIM/Operation/4.0"
-        )
+            self._model_info_meas = CgmesFullModel(
+                profile=["http://iec.ch/TC57/ns/CIM/OperationMeas/4.0"]
+            )
+        else:
+            self._model_info_op = CgmesFullModel(
+                profile=[
+                    "http://iec.ch/TC57/ns/CIM/Operation/4.0",
+                    "http://iec.ch/TC57/ns/CIM/OperationMeas/4.0",
+                ]
+            )
+            self._model_info_meas = None
 
         self._datasource = datasource
         self._config = config
@@ -95,11 +89,35 @@ class MeasurementBuilder:
         Builds the model information for the OP and MEAS profiles.
         """
 
-        self._datasource.insert_triples(self._model_info_op.to_triples(), Profile.OP)
-
-        if self._datasource.graphs[Profile.MEAS] == self._datasource.graphs[Profile.OP]:
-            return
-
-        self._datasource.insert_triples(
-            self._model_info_meas.to_triples(), Profile.MEAS
+        profiles = [Profile.parse(p) for p in self._model_info_op.profile]
+        graph_name = self._datasource.named_graphs.determine_graph_name(
+            profiles,
+            [self._model_info_op.modeling_authority_set],
         )
+        for p in profiles:
+            self._datasource.named_graphs.add(p, graph_name)
+
+        [
+            self._datasource.insert_triples(self._model_info_op.to_triples(), pr)
+            for pr in self._to_graph(Profile.OP)
+        ]
+
+        if self._model_info_meas is not None:
+            profiles = [Profile.parse(p) for p in self._model_info_meas.profile]
+            graph_name = self._datasource.named_graphs.determine_graph_name(
+                profiles, [self._model_info_meas.modeling_authority_set]
+            )
+            for p in profiles:
+                self._datasource.named_graphs.add(p, graph_name)
+
+            [
+                self._datasource.insert_triples(self._model_info_meas.to_triples(), pr)
+                for pr in self._to_graph(Profile.MEAS)
+            ]
+
+    def _to_graph(self, profile: Profile) -> list[Profile | str]:
+        to_graph: list[Profile | str] = [profile]
+        if not self._datasource.split_profiles:
+            to_graph.append(self._datasource.named_graphs.default_graph)
+
+        return to_graph

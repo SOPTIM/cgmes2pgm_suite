@@ -22,6 +22,7 @@ from cgmes2pgm_converter.common import Profile, Timer, Topology
 from power_grid_model_io.converters import PgmJsonConverter
 
 from cgmes2pgm_suite.common import NodeBalance
+from cgmes2pgm_suite.common.cgmes_classes import CGMES2PGM_MAS
 from cgmes2pgm_suite.config import SuiteConfigReader, SuiteConfiguration
 from cgmes2pgm_suite.export import (
     GraphToXMLExport,
@@ -33,7 +34,11 @@ from cgmes2pgm_suite.export import (
 )
 from cgmes2pgm_suite.export.iri_export import extra_info_with_clean_iris
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
-from cgmes2pgm_suite.rdf_store import FusekiDockerContainer, FusekiServer, RdfXmlImport
+from cgmes2pgm_suite.rdf_store import (
+    FusekiDockerContainer,
+    FusekiServer,
+    RdfXmlDirectoryImport,
+)
 from cgmes2pgm_suite.state_estimation import (
     StateEstimationResult,
     StateEstimationWrapper,
@@ -54,14 +59,21 @@ def main():
         fuseki_container.remove()
 
 
-def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
+def _run(
+    config: SuiteConfiguration,
+) -> StateEstimationResult | list[StateEstimationResult] | None:
 
     _ensure_fuseki_dataset(config)
     if config.steps.upload_xml_files:
         _upload_files(config)
+    else:
+        # determine what data is located in which graph
+        config.dataset.populate_named_graph_mapping()
 
     if config.steps.measurement_simulation:
-        builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
+        builder = MeasurementBuilder(
+            config.dataset, config.measurement_simulation, separate_models=False
+        )
         builder.build_from_sv()
         _export_measurement_simulation(config)
 
@@ -89,11 +101,16 @@ def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
     return results
 
 
-def _ensure_fuseki_dataset(config):
+def _ensure_fuseki_dataset(config: SuiteConfiguration):
     fuseki = FusekiServer("http://localhost:3030")
 
     if not fuseki.ping():
         raise RuntimeError("Fuseki server is not running or not reachable.")
+
+    if config.steps.upload_xml_files:
+        # If we upload files, we want to start with a clean dataset
+        fuseki.delete_dataset(config.name)
+        pass
 
     if not fuseki.dataset_exists(config.name):
         fuseki.create_dataset(config.name)
@@ -138,8 +155,11 @@ def _upload_files(config: SuiteConfiguration):
         graph = "default"
 
         config.dataset.drop_graph(graph)
-        importer = RdfXmlImport(
-            dataset=config.dataset, target_graph=graph, base_iri=config.dataset.base_url
+        importer = RdfXmlDirectoryImport(
+            dataset=config.dataset,
+            target_graph=graph,
+            base_iri=config.dataset.base_url,
+            split_profiles=config.dataset.split_profiles,
         )
 
         directory = config.xml_file_location
@@ -159,8 +179,14 @@ def _convert_cgmes(ds, options):
 
 
 def _export_measurement_simulation(config: SuiteConfiguration):
-    op_graph = config.dataset.graphs[Profile.OP]
-    meas_graph = config.dataset.graphs[Profile.MEAS]
+    op_graphs = config.dataset.named_graphs.get(Profile.OP)
+    assert len(op_graphs) == 1, "There should be exactly one OP graph"
+    op_graph = list(op_graphs)[0]
+
+    meas_graphs = config.dataset.named_graphs.get(Profile.MEAS)
+    assert len(meas_graphs) == 1, "There should be exactly one MEAS graph"
+    meas_graph = list(meas_graphs)[0]
+
     rdfxml_export = GraphToXMLExport(
         config.dataset,
         source_graph=op_graph,
@@ -264,21 +290,20 @@ def _export_result_data(
     )
     exporter.export()
 
-    if Profile.SV not in config.dataset.graphs:
-        logging.warning("No SV profile url defined, skipping SV profile export")
-        return
+    sv_target_graph = config.dataset.named_graphs.determine_graph_name(
+        [Profile.SV], [CGMES2PGM_MAS]
+    )
 
-    target_graph = config.dataset.graphs[Profile.SV]
     sv_profile_builder = SvProfileBuilder(
         config.dataset,
         result,
-        target_graph=target_graph,
+        target_graph=sv_target_graph,
     )
     sv_profile_builder.build(True)
 
     rdfxml_export = GraphToXMLExport(
         config.dataset,
-        source_graph=target_graph,
+        source_graph=sv_target_graph,
         target_path=os.path.join(output_folder, "pgm_sv.xml"),
     )
     rdfxml_export.export()

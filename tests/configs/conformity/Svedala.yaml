@@ -4,10 +4,6 @@ XmlFileLocation: "../../data/conformity/Svedala"
 
 DataSource:
   BaseUrl: "http://localhost:3030/Svedala"
-  Graphs:
-    OP: "/op"
-    MEAS: "/op"
-    SV: "/sv"
   CIM-Namespace: "http://iec.ch/TC57/CIM100#"
 
 Steps:

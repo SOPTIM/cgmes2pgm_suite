@@ -29,30 +29,7 @@ from .meas_ranges import MeasurementRangeSet
 # pylint: disable=too-few-public-methods
 class PowerMeasurementBuilder:
 
-    def __init__(
-        self,
-        datasource: CgmesDataset,
-        pq_ranges: MeasurementRangeSet,
-        sources: dict[MeasurementValueSource, str],
-        with_sigmas: bool = True,
-    ):
-        self._datasource = datasource
-        self._sv_power_to_p_meas: dict = {}
-        self._sv_power_to_q_meas: dict = {}
-        self._pq_ranges = pq_ranges
-        self._sources = sources
-        self._with_sigmas = with_sigmas
-
-    def build_from_sv(self):
-        sv = self._get_sv_powers()
-
-        self._create_p_meas(sv)
-        self._create_q_meas(sv)
-        self._create_p_meas_vals(sv)
-        self._create_q_meas_vals(sv)
-
-    def _get_sv_powers(self):
-        query = """
+    default_query = """
         SELECT
             (SAMPLE(?_sv) as ?sv)
             ?term
@@ -98,11 +75,109 @@ class PowerMeasurementBuilder:
         }
         GROUP BY ?term
         ORDER BY ?term
-        """
+    """
 
+    graph_query = """
+        SELECT
+            (SAMPLE(?_sv) as ?sv)
+            ?term
+            (SAMPLE(?_eq) as ?eq)
+            (SAMPLE(?_name) as ?name)
+            (SAMPLE(?_tn) as ?tn)
+            (SAMPLE(?_p) as ?p)
+            (SAMPLE(?_q) as ?q)
+            (SAMPLE(?_nomV) as ?nomV)
+            (SAMPLE(?_maxIxU) as ?maxIxU)
+        WHERE {
+
+            VALUES ?sv_graph { $SV_GRAPH }
+            GRAPH ?sv_graph {
+                ?_sv cim:SvPowerFlow.p ?_p;
+                    cim:SvPowerFlow.q ?_q;
+                    cim:SvPowerFlow.Terminal ?term.
+            }
+
+            VALUES ?eq_graph { $EQ_GRAPH }
+            GRAPH ?eq_graph {
+                ?term cim:Terminal.ConductingEquipment ?_eq;
+                    cim:IdentifiedObject.name ?_name.
+
+
+                OPTIONAL {
+                    ?_eq cim:RotatingMachine.GeneratingUnit ?_genUnit.
+                    ?_genUnit cim:GeneratingUnit.maxOperatingP ?_maxP;
+                            cim:GeneratingUnit.minOperatingP ?_minP.
+                }
+
+                OPTIONAL {
+                    ?_eq cim:ExternalNetworkInjection.maxP ?_maxP;
+                            cim:ExternalNetworkInjection.minP ?_minP.
+                }
+
+                OPTIONAL {
+                    ?_trEnd cim:TransformerEnd.Terminal ?term;
+                            cim:PowerTransformerEnd.ratedS ?_maxP.
+                }
+
+                OPTIONAL {
+                    ?_limitSet cim:OperationalLimitSet.Terminal ?term.
+                    ?_currentLimit cim:OperationalLimit.OperationalLimitSet ?_limitSet;
+                                    cim:CurrentLimit.value ?_maxI.
+                }
+                BIND(coalesce(?_maxP, xsd:string(xsd:float(?_maxI) * xsd:float(?_nomV) * 0.001)) as ?_maxIxU)
+            }
+
+            VALUES ?tp_graph { $TP_GRAPH }
+            GRAPH ?tp_graph {
+                ?term cim:Terminal.TopologicalNode ?_tn.
+                ?_tn cim:TopologicalNode.BaseVoltage ?_bv.
+            }
+
+            VALUES ?eq_graph_bv { $EQ_GRAPH }
+            GRAPH ?eq_graph_bv {
+                ?_bv cim:BaseVoltage.nominalVoltage ?_nomV.
+            }
+        }
+        GROUP BY ?term
+        ORDER BY ?term
+    """
+
+    def __init__(
+        self,
+        datasource: CgmesDataset,
+        pq_ranges: MeasurementRangeSet,
+        sources: dict[MeasurementValueSource, str],
+        with_sigmas: bool = True,
+    ):
+        self._datasource = datasource
+        self._sv_power_to_p_meas: dict = {}
+        self._sv_power_to_q_meas: dict = {}
+        self._pq_ranges = pq_ranges
+        self._sources = sources
+        self._with_sigmas = with_sigmas
+
+    def build_from_sv(self):
+        sv = self._get_sv_powers()
+
+        self._create_p_meas(sv)
+        self._create_q_meas(sv)
+        self._create_p_meas_vals(sv)
+        self._create_q_meas_vals(sv)
+
+    def _get_sv_powers(self):
         # get IRIs with base_uri, because we are writing into the graph again and need this
         # for referential consistency
-        res = self._datasource.query(query, remove_uuid_base_uri=False)
+        if self._datasource.split_profiles:
+            named_graphs = self._datasource.named_graphs
+            args = {
+                "$TP_GRAPH": named_graphs.format_for_query(Profile.TP),
+                "$EQ_GRAPH": named_graphs.format_for_query(Profile.EQ),
+                "$SV_GRAPH": named_graphs.format_for_query(Profile.SV),
+            }
+            q = self._datasource.format_query(self.graph_query, args)
+            res = self._datasource.query(q, remove_uuid_base_uri=False)
+        else:
+            res = self._datasource.query(self.default_query, remove_uuid_base_uri=False)
 
         return res
 
@@ -133,7 +208,7 @@ class PowerMeasurementBuilder:
         meas_p["cim:Analog.maxValue"] = [r.max_value for r in ranges]
         meas_p["cim:Analog.normalValue"] = meas_p["cim:Analog.maxValue"]
 
-        self._datasource.insert_df(meas_p, Profile.OP)
+        [self._datasource.insert_df(meas_p, pr) for pr in self._to_graph(Profile.OP)]
 
     def _create_q_meas(self, sv: pd.DataFrame):
         meas_q = pd.DataFrame()
@@ -163,7 +238,7 @@ class PowerMeasurementBuilder:
         meas_q["cim:Analog.maxValue"] = [r.max_value for r in ranges]
         meas_q["cim:Analog.normalValue"] = meas_q["cim:Analog.maxValue"]
 
-        self._datasource.insert_df(meas_q, Profile.OP)
+        [self._datasource.insert_df(meas_q, pr) for pr in self._to_graph(Profile.OP)]
 
     def _create_p_meas_vals(self, sv: pd.DataFrame):
         vals_p_op = pd.DataFrame()
@@ -197,8 +272,11 @@ class PowerMeasurementBuilder:
             self._pq_ranges.distort_measurement(r, p) for r, p in zip(ranges, sv["p"])
         ]
 
-        self._datasource.insert_df(vals_p_op, Profile.OP)
-        self._datasource.insert_df(vals_p_meas, Profile.MEAS, include_mrid=False)
+        [self._datasource.insert_df(vals_p_op, pr) for pr in self._to_graph(Profile.OP)]
+        [
+            self._datasource.insert_df(vals_p_meas, pr, include_mrid=False)
+            for pr in self._to_graph(Profile.MEAS)
+        ]
 
     def _create_q_meas_vals(self, sv: pd.DataFrame):
         vals_q_op = pd.DataFrame()
@@ -232,5 +310,15 @@ class PowerMeasurementBuilder:
             self._pq_ranges.distort_measurement(r, q) for r, q in zip(ranges, sv["q"])
         ]
 
-        self._datasource.insert_df(vals_q_op, Profile.OP)
-        self._datasource.insert_df(vals_q_meas, Profile.MEAS, include_mrid=False)
+        [self._datasource.insert_df(vals_q_op, pr) for pr in self._to_graph(Profile.OP)]
+        [
+            self._datasource.insert_df(vals_q_meas, pr, include_mrid=False)
+            for pr in self._to_graph(Profile.MEAS)
+        ]
+
+    def _to_graph(self, profile: Profile) -> list[Profile | str]:
+        to_graph: list[Profile | str] = [profile]
+        if not self._datasource.split_profiles:
+            to_graph.append(self._datasource.named_graphs.default_graph)
+
+        return to_graph
