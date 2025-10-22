@@ -147,12 +147,14 @@ class PowerMeasurementBuilder:
         datasource: CgmesDataset,
         pq_ranges: MeasurementRangeSet,
         sources: dict[MeasurementValueSource, str],
+        with_sigmas: bool = True,
     ):
         self._datasource = datasource
         self._sv_power_to_p_meas: dict = {}
         self._sv_power_to_q_meas: dict = {}
         self._pq_ranges = pq_ranges
         self._sources = sources
+        self._with_sigmas = with_sigmas
 
     def build_from_sv(self):
         sv = self._get_sv_powers()
@@ -260,7 +262,8 @@ class PowerMeasurementBuilder:
         ]
 
         ranges = [self._pq_ranges.get_by_value(nomV) for nomV in sv["nomV"]]
-        vals_p_op["cim:MeasurementValue.sensorSigma"] = [r.sigma for r in ranges]
+        if self._with_sigmas:
+            vals_p_op["cim:MeasurementValue.sensorSigma"] = [r.sigma for r in ranges]
 
         # Meas-Profile
 
@@ -297,7 +300,8 @@ class PowerMeasurementBuilder:
         ]
 
         ranges = [self._pq_ranges.get_by_value(nomV) for nomV in sv["nomV"]]
-        vals_q_op["cim:MeasurementValue.sensorSigma"] = [r.sigma for r in ranges]
+        if self._with_sigmas:
+            vals_q_op["cim:MeasurementValue.sensorSigma"] = [r.sigma for r in ranges]
 
         # Meas-Profile
 

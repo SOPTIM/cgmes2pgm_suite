@@ -99,11 +99,13 @@ class VoltageMeasurementBuilder:
         datasource: CgmesDataset,
         v_ranges: MeasurementRangeSet,
         sources: dict[MeasurementValueSource, str],
+        with_sigmas: bool = True,
     ):
         self._datasource = datasource
         self._sv_voltage_to_meas: dict = {}
         self._v_ranges = v_ranges
         self._sources = sources
+        self._with_sigmas = with_sigmas
 
     def build_from_sv(self):
         sv = self._get_sv_voltages()
@@ -181,7 +183,8 @@ class VoltageMeasurementBuilder:
         ]
 
         ranges = [self._v_ranges.get_by_value(v) for v in sv["nomV"]]
-        vals_op["cim:MeasurementValue.sensorSigma"] = [r.sigma for r in ranges]
+        if self._with_sigmas:
+            vals_op["cim:MeasurementValue.sensorSigma"] = [r.sigma for r in ranges]
 
         vals_meas["cim:AnalogValue.value"] = [
             self._v_ranges.distort_measurement(r, u) for r, u in zip(ranges, sv["u"])
