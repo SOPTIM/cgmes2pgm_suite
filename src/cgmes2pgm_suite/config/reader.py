@@ -204,7 +204,7 @@ class SuiteConfigReader:
 
     def _read_substitution_options(self):
         converter_options = self._config.get("Converter", {})
-        substitution_config = converter_options.get("MeasurementSubstitution", {})
+        substitution_config = converter_options.get("MeasurementSubstitutions", {})
 
         branch_config = substitution_config.get("BranchMeasurements", {})
         branch_measurements = BranchMeasurements(

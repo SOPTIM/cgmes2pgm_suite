@@ -30,7 +30,7 @@ class PgmCalculationParameters:
     threads: int = -1
     max_iterations: int = 100
     error_tolerance: float = 1e-6
-    bad_data_tolerance: int = 3
+    bad_data_tolerance: float = 3.0
 
 
 @dataclass
