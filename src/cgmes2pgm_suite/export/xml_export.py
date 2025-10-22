@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-
 import pandas as pd
-from cgmes2pgm_converter.common import CgmesDataset
+from cgmes2pgm_converter.common import CgmesDataset, Profile
 
 from .utils import CimXmlBuilder, CimXmlObject
 
@@ -32,14 +30,20 @@ class GraphToXMLExport:
     def __init__(
         self,
         dataset: CgmesDataset,
-        source_graph: str,
+        source_graph: Profile | str | list[str],
         target_path: str,
     ):
         """
         Args:
             dataset (CgmesDataset): The dataset to be converted to XML
-            source_graph (str): The name of the source graph to be exported
+            source_graph (Profile|str|list[str]): The name of the source graph to be exported
             target_path (str): The path where the XML file will be saved
+
+        `source_graph` can be a Profile (in which case all graphs for the profile are used),
+        a single graph IRI (str) or a list of graph IRIs (list[str]). In case of multiple graphs,
+        all graphs are merged into one XML file. However, the export requires exactly one
+        ModelHeader (FullModel or DifferenceModel) in the merged graphs. Therefore, if multiple graphs
+        are provided, the ModelHeader is read only from the first graph in the list.
         """
         self.dataset = dataset
         self.source_graph = source_graph
@@ -56,10 +60,18 @@ class GraphToXMLExport:
             triples = self._get_all_triples()
             grouped = triples.groupby("s")
             model_header_subject = self._get_model_header()
+
+            # Get all FullModel triples
+            full_model_triples = triples[
+                triples["o"].str.contains("FullModel", na=False)
+            ]
+            full_model_ids = full_model_triples["s"].tolist()
+
             subjects = list(grouped.groups.keys())
 
+            # use only the first FullModel if multiple are present, filter out the others
             ordered_subjects = [model_header_subject] + [
-                s for s in subjects if s != model_header_subject
+                s for s in subjects if s not in full_model_ids
             ]
 
             for subject in ordered_subjects:
@@ -98,9 +110,11 @@ class GraphToXMLExport:
 
         query_named = f"""
         SELECT ?s ?p ?o (isIRI(?o) as ?isIRI)
-        FROM <{self.source_graph}>
         WHERE {{
-            ?s ?p ?o .
+            VALUES ?g {{ $SOURCE_GRAPHS }}
+            GRAPH ?g {{
+                ?s ?p ?o .
+            }}
         }}
         """
         query_default = """
@@ -113,7 +127,8 @@ class GraphToXMLExport:
         if self.source_graph == "default":
             query = query_default
         else:
-            query = query_named
+            query = self._named_query(query_named)
+
         return self.dataset.query(query, add_prefixes=False)
 
     def apply_prefix(self, predicate: str) -> str:
@@ -156,7 +171,7 @@ class GraphToXMLExport:
         """Returns IRI of the model header (FullModel)"""
 
         query_default = """
-        SELECT DISTINCT ?s
+            SELECT DISTINCT ?s
             WHERE {
                 VALUES ?_type {md:FullModel dm:DifferenceModel}
                 ?s a ?_type .
@@ -164,18 +179,20 @@ class GraphToXMLExport:
         """
 
         query_named = f"""
-        SELECT DISTINCT ?s
-            FROM <{self.source_graph}>
+            SELECT DISTINCT ?s
             WHERE {{
-                VALUES ?_type {{md:FullModel dm:DifferenceModel}}
-                ?s a ?_type .
+                VALUES ?g {{ $SOURCE_GRAPHS }}
+                GRAPH ?g {{
+                    VALUES ?_type {{md:FullModel dm:DifferenceModel}}
+                    ?s a ?_type .
+                }}
             }}
         """
 
         if self.source_graph == "default":
             query = query_default
         else:
-            query = query_named
+            query = self._named_query(query_named, only_one_graph=True)
 
         result = self.dataset.query(query)
 
@@ -190,3 +207,23 @@ class GraphToXMLExport:
             )
 
         return result.iloc[0]["s"]
+
+    def _named_query(self, query_named: str, only_one_graph: bool = False) -> str:
+        args = {"$SOURCE_GRAPHS": ""}
+        if isinstance(self.source_graph, list):
+            sg = self.source_graph
+            if only_one_graph and len(self.source_graph) > 1:
+                sg = [self.source_graph[0]]
+            args["$SOURCE_GRAPHS"] = " ".join(f"<{g}>" for g in sg)
+        elif isinstance(self.source_graph, Profile):
+            sg = self.dataset.named_graphs.get(self.source_graph)
+            if only_one_graph and len(sg) > 1:
+                sg = [list(sg)[0]]
+            args["$SOURCE_GRAPHS"] = " ".join(f"<{g}>" for g in sg)
+        elif isinstance(self.source_graph, str):
+            args["$SOURCE_GRAPHS"] = f"<{self.source_graph}>"
+        else:
+            raise ValueError(
+                f"Invalid source_graph type: {type(self.source_graph)}. Must be Profile, str or list of str."
+            )
+        return self.dataset.format_query(query_named, args)
