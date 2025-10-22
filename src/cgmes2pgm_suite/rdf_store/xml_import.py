@@ -281,7 +281,7 @@ class RdfXmlImport:
             )
             return ""
 
-        profiles_str = ", ".join([str(p) for p in mas_profiles])
+        profiles_str = ", ".join([f"{str(p.profile)}{'[BD]' if p.boundary else ''}" for p in mas_profiles])
 
         if not to_profile_graph:
             if drop_before_upload:

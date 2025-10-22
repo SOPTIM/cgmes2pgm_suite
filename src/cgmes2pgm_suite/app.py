@@ -66,8 +66,9 @@ def _run(
     _ensure_fuseki_dataset(config)
     if config.steps.upload_xml_files:
         _upload_files(config)
-    else:
-        # determine what data is located in which graph
+    elif config.dataset.split_profiles:
+        # determine what data is located in which graph, assuming profiles are split into multiple graphs.
+        # if profiles are not split, all data is in the default graph and no mapping is needed.
         config.dataset.populate_named_graph_mapping()
 
     if config.steps.measurement_simulation:
