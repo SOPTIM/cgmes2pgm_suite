@@ -22,6 +22,7 @@ from cgmes2pgm_converter.common import Profile, Timer, Topology
 from power_grid_model_io.converters import PgmJsonConverter
 
 from cgmes2pgm_suite.common import NodeBalance
+from cgmes2pgm_suite.common.cgmes_classes import CGMES2PGM_MAS
 from cgmes2pgm_suite.config import SuiteConfigReader, SuiteConfiguration
 from cgmes2pgm_suite.export import (
     GraphToXMLExport,
@@ -33,7 +34,11 @@ from cgmes2pgm_suite.export import (
 )
 from cgmes2pgm_suite.export.iri_export import extra_info_with_clean_iris
 from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
-from cgmes2pgm_suite.rdf_store import FusekiDockerContainer, FusekiServer, RdfXmlImport
+from cgmes2pgm_suite.rdf_store import (
+    FusekiDockerContainer,
+    FusekiServer,
+    RdfXmlDirectoryImport,
+)
 from cgmes2pgm_suite.state_estimation import (
     StateEstimationResult,
     StateEstimationWrapper,
@@ -54,16 +59,28 @@ def main():
         fuseki_container.remove()
 
 
-def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
+def _run(
+    config: SuiteConfiguration,
+) -> StateEstimationResult | list[StateEstimationResult] | None:
 
     _ensure_fuseki_dataset(config)
     if config.steps.upload_xml_files:
         _upload_files(config)
+    elif config.dataset.split_profiles:
+        # determine what data is located in which graph, assuming profiles are split into multiple graphs.
+        # if profiles are not split, all data is in the default graph and no mapping is needed.
+        config.dataset.populate_named_graph_mapping()
 
     if config.steps.measurement_simulation:
-        builder = MeasurementBuilder(config.dataset, config.measurement_simulation)
+        # put OP and MEAS profile into same graph
+        separate_models = False
+        builder = MeasurementBuilder(
+            config.dataset,
+            config.measurement_simulation,
+            separate_models=separate_models,
+        )
         builder.build_from_sv()
-        _export_measurement_simulation(config)
+        _export_measurement_simulation(config, separate_models)
 
     extra_info, input_data = _convert_cgmes(config.dataset, config.converter_options)
 
@@ -81,16 +98,24 @@ def _run(config) -> StateEstimationResult | list[StateEstimationResult] | None:
         print(results)
         _export_run(results, config.output_folder, config)
     else:  # List of results
+        for res in results:
+            print(f"-----\n{res.run_name}:")
+            print(res)
         _export_runs(results, config.output_folder, config)
 
     return results
 
 
-def _ensure_fuseki_dataset(config):
+def _ensure_fuseki_dataset(config: SuiteConfiguration):
     fuseki = FusekiServer("http://localhost:3030")
 
     if not fuseki.ping():
         raise RuntimeError("Fuseki server is not running or not reachable.")
+
+    if config.steps.upload_xml_files:
+        # If we upload files, we want to start with a clean dataset
+        fuseki.delete_dataset(config.name)
+        pass
 
     if not fuseki.dataset_exists(config.name):
         fuseki.create_dataset(config.name)
@@ -135,8 +160,11 @@ def _upload_files(config: SuiteConfiguration):
         graph = "default"
 
         config.dataset.drop_graph(graph)
-        importer = RdfXmlImport(
-            dataset=config.dataset, target_graph=graph, base_iri=config.dataset.base_url
+        importer = RdfXmlDirectoryImport(
+            dataset=config.dataset,
+            target_graph=graph,
+            base_iri=config.dataset.base_url,
+            split_profiles=config.dataset.split_profiles,
         )
 
         directory = config.xml_file_location
@@ -155,23 +183,24 @@ def _convert_cgmes(ds, options):
     return extra_info, input_data
 
 
-def _export_measurement_simulation(config: SuiteConfiguration):
-    op_graph = config.dataset.graphs[Profile.OP]
-    meas_graph = config.dataset.graphs[Profile.MEAS]
+def _export_measurement_simulation(config: SuiteConfiguration, separate_models: bool):
+
     rdfxml_export = GraphToXMLExport(
         config.dataset,
-        source_graph=op_graph,
+        source_graph=Profile.OP,
         target_path=os.path.join(config.output_folder, "op.xml"),
     )
     rdfxml_export.export()
 
-    if op_graph == meas_graph:
+    # if OP and MEAS are not build separately, then they are in the same graph (name)
+    # and exporting both separately is not needed
+    if not separate_models:
         logging.info("OP and MEAS graph are the same, op profile contains meas-profile")
         return
 
     rdfxml_export = GraphToXMLExport(
         config.dataset,
-        source_graph=meas_graph,
+        source_graph=Profile.MEAS,
         target_path=os.path.join(config.output_folder, "meas.xml"),
     )
     rdfxml_export.export()
@@ -261,21 +290,20 @@ def _export_result_data(
     )
     exporter.export()
 
-    if Profile.SV not in config.dataset.graphs:
-        logging.warning("No SV profile url defined, skipping SV profile export")
-        return
+    sv_target_graph = config.dataset.named_graphs.determine_graph_name(
+        [Profile.SV], [CGMES2PGM_MAS]
+    )
 
-    target_graph = config.dataset.graphs[Profile.SV]
     sv_profile_builder = SvProfileBuilder(
         config.dataset,
         result,
-        target_graph=target_graph,
+        target_graph=sv_target_graph,
     )
     sv_profile_builder.build(True)
 
     rdfxml_export = GraphToXMLExport(
         config.dataset,
-        source_graph=target_graph,
+        source_graph=sv_target_graph,
         target_path=os.path.join(output_folder, "pgm_sv.xml"),
     )
     rdfxml_export.export()

@@ -4,10 +4,6 @@ XmlFileLocation: "../../data/conformity/Svedala"
 
 DataSource:
   BaseUrl: "http://localhost:3030/Svedala"
-  Graphs:
-    OP: "/op"
-    MEAS: "/op"
-    SV: "/sv"
   CIM-Namespace: "http://iec.ch/TC57/CIM100#"
 
 Steps:
@@ -37,11 +33,16 @@ Converter:
 
   MeasurementSubstitutions:
     PowerFlowSigma:
+      # Sigma value is missing for a U measurement, then use the following values depending on the nominal voltage of the node
+      SigmaU: 10 # kV
+      DiscreteU:
+        380.0: 20
+        220.0: 15
       # Sigma value is missing for a P/Q measurement, then use the following values depending on the nominal voltage of the node
-      Sigma: 10 # MW/MVar
-      Discrete:
-        - { NomV: 380.0, Sigma: 20 }
-        - { NomV: 220.0, Sigma: 15 }
+      SigmaPQ: 10 # MW/MVar
+      DiscretePQ:
+        380.0: 20
+        220.0: 15
     UseSSHValues:
       # P and Q measurements are missing for an appliance, then use the SSH values
       Enable: false

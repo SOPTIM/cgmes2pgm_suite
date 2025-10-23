@@ -65,6 +65,17 @@ class FusekiServer:
         except requests.RequestException:
             return False
 
+    def delete_dataset(
+        self, dataset_name: str, db_type: FusekiDatasetType = FusekiDatasetType.MEM
+    ) -> bool:
+        try:
+            response = requests.delete(
+                f"{self.url}/$/datasets/{dataset_name}", timeout=5
+            )
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
+
 
 DOCKER_FILE_PATH = "resources/docker"
 IMAGE_NAME = "fuseki-server"

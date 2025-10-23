@@ -32,24 +32,7 @@ class VoltageMeasurementBuilder:
     Creates Measurement objects based on SV-Profile
     """
 
-    def __init__(
-        self,
-        datasource: CgmesDataset,
-        v_ranges: MeasurementRangeSet,
-        sources: dict[MeasurementValueSource, str],
-    ):
-        self._datasource = datasource
-        self._sv_voltage_to_meas: dict = {}
-        self._v_ranges = v_ranges
-        self._sources = sources
-
-    def build_from_sv(self):
-        sv = self._get_sv_voltages()
-        self._create_voltage_meas(sv)
-        self._create_voltage_meas_vals(sv)
-
-    def _get_sv_voltages(self):
-        query = """
+    default_query = """
         SELECT ?tn
             (SAMPLE(?_name) as ?name)
             (SAMPLE(?_nomV) as ?nomV)
@@ -60,22 +43,89 @@ class VoltageMeasurementBuilder:
             (SAMPLE(?_sv) as ?sv)
         WHERE {
             ?_sv cim:SvVoltage.v ?_u;
-                    cim:SvVoltage.angle ?_angle;
-                    cim:SvVoltage.TopologicalNode ?tn.
+                cim:SvVoltage.angle ?_angle;
+                cim:SvVoltage.TopologicalNode ?tn.
 
             ?_term cim:Terminal.TopologicalNode ?tn;
-                    cim:Terminal.ConductingEquipment ?_eq.
+                cim:Terminal.ConductingEquipment ?_eq.
 
             ?tn cim:IdentifiedObject.name ?_name;
                 cim:TopologicalNode.BaseVoltage/cim:BaseVoltage.nominalVoltage ?_nomV.
         }
         GROUP BY ?tn
         ORDER BY ?tn
-        """
+    """
 
+    graph_query = """
+        SELECT ?tn
+            (SAMPLE(?_name) as ?name)
+            (SAMPLE(?_nomV) as ?nomV)
+            (SAMPLE(?_u) as ?u)
+            (SAMPLE(?_angle) as ?angle)
+            (SAMPLE(?_term) as ?term)
+            (SAMPLE(?_eq) as ?eq)
+            (SAMPLE(?_sv) as ?sv)
+        WHERE {
+            VALUES ?sv_graph { $SV_GRAPH }
+            GRAPH ?sv_graph {
+                ?_sv cim:SvVoltage.v ?_u;
+                    cim:SvVoltage.angle ?_angle;
+                    cim:SvVoltage.TopologicalNode ?tn.
+            }
+
+            VALUES ?tp_graph { $TP_GRAPH }
+            GRAPH ?tp_graph {
+                ?_term cim:Terminal.TopologicalNode ?tn.
+                ?tn cim:IdentifiedObject.name ?_name;
+                    cim:TopologicalNode.BaseVoltage ?_bv.
+            }
+
+            VALUES ?eq_graph { $EQ_GRAPH }
+            GRAPH ?eq_graph {
+                ?_term cim:Terminal.ConductingEquipment ?_eq.
+            }
+
+            VALUES ?eq_graph_bv { $EQ_GRAPH }
+            GRAPH ?eq_graph_bv {
+                ?_bv cim:BaseVoltage.nominalVoltage ?_nomV.
+            }
+        }
+        GROUP BY ?tn
+        ORDER BY ?tn
+    """
+
+    def __init__(
+        self,
+        datasource: CgmesDataset,
+        v_ranges: MeasurementRangeSet,
+        sources: dict[MeasurementValueSource, str],
+        with_sigmas: bool = True,
+    ):
+        self._datasource = datasource
+        self._sv_voltage_to_meas: dict = {}
+        self._v_ranges = v_ranges
+        self._sources = sources
+        self._with_sigmas = with_sigmas
+
+    def build_from_sv(self):
+        sv = self._get_sv_voltages()
+        self._create_voltage_meas(sv)
+        self._create_voltage_meas_vals(sv)
+
+    def _get_sv_voltages(self):
         # get IRIs with base_uri, because we are writing into the graph again and need this
         # for referential consistency
-        res = self._datasource.query(query, remove_uuid_base_uri=False)
+        if self._datasource.split_profiles:
+            named_graphs = self._datasource.named_graphs
+            args = {
+                "$TP_GRAPH": named_graphs.format_for_query(Profile.TP),
+                "$EQ_GRAPH": named_graphs.format_for_query(Profile.EQ),
+                "$SV_GRAPH": named_graphs.format_for_query(Profile.SV),
+            }
+            q = self._datasource.format_query(self.graph_query, args)
+            res = self._datasource.query(q, remove_uuid_base_uri=False)
+        else:
+            res = self._datasource.query(self.default_query, remove_uuid_base_uri=False)
 
         return res
 
@@ -107,7 +157,7 @@ class VoltageMeasurementBuilder:
         meas["cim:Analog.minValue"] = [r.min_value for r in ranges]
         meas["cim:Analog.maxValue"] = [r.max_value for r in ranges]
 
-        self._datasource.insert_df(meas, Profile.OP)
+        [self._datasource.insert_df(meas, pr) for pr in self._to_graph(Profile.OP)]
 
     def _create_voltage_meas_vals(self, sv: pd.DataFrame):
 
@@ -133,7 +183,8 @@ class VoltageMeasurementBuilder:
         ]
 
         ranges = [self._v_ranges.get_by_value(v) for v in sv["nomV"]]
-        vals_op["cim:MeasurementValue.sensorSigma"] = [r.sigma for r in ranges]
+        if self._with_sigmas:
+            vals_op["cim:MeasurementValue.sensorSigma"] = [r.sigma for r in ranges]
 
         vals_meas["cim:AnalogValue.value"] = [
             self._v_ranges.distort_measurement(r, u) for r, u in zip(ranges, sv["u"])
@@ -145,5 +196,15 @@ class VoltageMeasurementBuilder:
         # Meas-Profile
         vals_meas["cim:MeasurementValue.timeStamp"] = '"2021-01-01T00:00:00Z"'
 
-        self._datasource.insert_df(vals_op, Profile.OP)
-        self._datasource.insert_df(vals_meas, Profile.MEAS, include_mrid=False)
+        [self._datasource.insert_df(vals_op, pr) for pr in self._to_graph(Profile.OP)]
+        [
+            self._datasource.insert_df(vals_meas, pr, include_mrid=False)
+            for pr in self._to_graph(Profile.MEAS)
+        ]
+
+    def _to_graph(self, profile: Profile) -> list[Profile | str]:
+        to_graph: list[Profile | str] = [profile]
+        if not self._datasource.split_profiles:
+            to_graph.append(self._datasource.named_graphs.default_graph)
+
+        return to_graph

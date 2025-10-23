@@ -109,7 +109,7 @@ def _setup_fuseki_dataset(fuseki, config, config_name):
     config.dataset = CgmesDataset(
         base_url=f"{fuseki.url}/{config_name}",
         cim_namespace=config.dataset.cim_namespace,
-        graphs=config.dataset.graphs,
+        split_profiles=config.dataset.split_profiles,
     )
 
 

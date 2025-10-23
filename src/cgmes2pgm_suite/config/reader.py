@@ -145,7 +145,6 @@ class SuiteConfigReader:
 
     def _read_dataset(self) -> CgmesDataset:
         source_data = self._config["DataSource"]
-        graph_data: dict = source_data.get("Graphs", {})
 
         base_url = source_data["BaseUrl"]
         if source_data.get("Dataset"):
@@ -153,15 +152,12 @@ class SuiteConfigReader:
                 base_url += "/"
             base_url += source_data["Dataset"]
 
-        graphs = {}
-        for profile in Profile:
-            if graph_data.get(profile):
-                graphs[profile] = base_url + graph_data.get(profile)
+        split_profiles = source_data.get("SplitProfiles", True)
 
         return CgmesDataset(
             base_url=base_url,
             cim_namespace=source_data["CIM-Namespace"],
-            graphs=graphs,
+            split_profiles=split_profiles,
         )
 
     def _read_converter_options(self) -> ConverterOptions:
@@ -208,7 +204,7 @@ class SuiteConfigReader:
 
     def _read_substitution_options(self):
         converter_options = self._config.get("Converter", {})
-        substitution_config = converter_options.get("MeasurementSubstitution", {})
+        substitution_config = converter_options.get("MeasurementSubstitutions", {})
 
         branch_config = substitution_config.get("BranchMeasurements", {})
         branch_measurements = BranchMeasurements(

@@ -17,21 +17,21 @@ import os
 
 import pytest
 from cgmes2pgm_converter import CgmesToPgmConverter
-from cgmes2pgm_converter.common import Profile
+from cgmes2pgm_converter.common import CgmesDataset, Profile
 
 from cgmes2pgm_suite.config import MeasurementSimulationConfigReader
 from cgmes2pgm_suite.export import GraphToXMLExport, TextExport
 from cgmes2pgm_suite.measurement_simulation import (
     MeasurementBuilder,
 )
-from cgmes2pgm_suite.rdf_store import RdfXmlImport
+from cgmes2pgm_suite.rdf_store import FusekiServer, RdfXmlImport
 
 from .util.data import setup_dataset
 
 
 @pytest.mark.usefixtures("cwd_to_tests_dir")
 @pytest.mark.parametrize("dataset_path", ["./data/conformity/MiniGrid"])
-def test_measurement_consistency(fuseki_server, dataset_path):
+def test_measurement_consistency(fuseki_server: FusekiServer, dataset_path):
     """Test to check if reading measurements from the default graph and from named graphs
     results in the same output.
     """
@@ -43,6 +43,7 @@ def test_measurement_consistency(fuseki_server, dataset_path):
         fuseki_server=fuseki_server,
         data_path=dataset_path,
         cim_namespace="http://iec.ch/TC57/CIM100#",
+        split_profiles=True,
     )
 
     _create_measurements(dataset)
@@ -52,7 +53,18 @@ def test_measurement_consistency(fuseki_server, dataset_path):
 
     # Export simulated measurements
     os.makedirs(out_dir, exist_ok=True)
-    move_meas_to_default(out_dir, dataset)
+    export_meas_from_named_graphs(out_dir, dataset)
+
+    # Import dataset again into default graph
+    fuseki_server.delete_dataset("test_reimport_measurement")
+    dataset = setup_dataset(
+        name="test_reimport_measurement",
+        fuseki_server=fuseki_server,
+        data_path=dataset_path,
+        cim_namespace="http://iec.ch/TC57/CIM100#",
+        split_profiles=False,
+    )
+    import_meas_to_default(out_dir, dataset)
 
     converter = CgmesToPgmConverter(dataset)
     input_data_default, extra_info_default = converter.convert()
@@ -82,36 +94,41 @@ def test_measurement_consistency(fuseki_server, dataset_path):
     ), "Input data differs after re-import (see out directory for differences)."
 
 
-def move_meas_to_default(out_dir, dataset):
+def export_meas_from_named_graphs(out_dir, dataset: CgmesDataset):
+    op_graph = dataset.named_graphs.get(Profile.OP)
+    assert len(op_graph) == 1
     exporter = GraphToXMLExport(
         dataset=dataset,
-        source_graph=dataset.graphs[Profile.OP],
+        source_graph=op_graph.pop(),
         target_path=f"{out_dir}/op.xml",
     )
     exporter.export()
 
+    meas_graph = dataset.named_graphs.get(Profile.MEAS)
+    assert len(meas_graph) == 1
     exporter = GraphToXMLExport(
         dataset=dataset,
-        source_graph=dataset.graphs[Profile.MEAS],
+        source_graph=meas_graph.pop(),
         target_path=f"{out_dir}/meas.xml",
     )
     exporter.export()
 
-    # Re-import the measurements into default graph
-    importer = RdfXmlImport(dataset, target_graph="default")
-    importer.import_file(f"{out_dir}/op.xml")
-    importer.import_file(f"{out_dir}/meas.xml")
 
-    # Unset Graphs to read measurements from default graph
-    dataset.graphs.pop(Profile.OP, None)
-    dataset.graphs.pop(Profile.MEAS, None)
+def import_meas_to_default(out_dir, dataset):
+    # Re-import the measurements into default graph
+    importer = RdfXmlImport(dataset, target_graph="default", split_profiles=False)
+    importer.import_file(f"{out_dir}/op.xml", upload_graph=False)
+    importer.upload_graph(to_profile_graph=False, drop_before_upload=False)
+
+    importer = RdfXmlImport(dataset, target_graph="default", split_profiles=False)
+    importer.import_file(f"{out_dir}/meas.xml", upload_graph=False)
+    importer.upload_graph(to_profile_graph=False, drop_before_upload=False)
 
 
 def _create_measurements(dataset):
-    dataset.graphs[Profile.OP] = f"{dataset.base_url}/op"
-    dataset.graphs[Profile.MEAS] = f"{dataset.base_url}/meas"
-
     # Run Measurement Simulation
     reader = MeasurementSimulationConfigReader(config_path="./configs/meas_ranges.yaml")
-    measurement_builder = MeasurementBuilder(dataset, reader.read())
+    measurement_builder = MeasurementBuilder(
+        dataset, reader.read(), separate_models=True
+    )
     measurement_builder.build_from_sv()
