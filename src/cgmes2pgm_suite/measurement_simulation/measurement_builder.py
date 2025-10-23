@@ -89,13 +89,7 @@ class MeasurementBuilder:
         Builds the model information for the OP and MEAS profiles.
         """
 
-        profiles = [Profile.parse(p) for p in self._model_info_op.profile]
-        graph_name = self._datasource.named_graphs.determine_graph_name(
-            profiles,
-            [self._model_info_op.modeling_authority_set],
-        )
-        for p in profiles:
-            self._datasource.named_graphs.add(p, graph_name)
+        self._init_graphs_for_measurements()
 
         [
             self._datasource.insert_triples(self._model_info_op.to_triples(), pr)
@@ -103,17 +97,32 @@ class MeasurementBuilder:
         ]
 
         if self._model_info_meas is not None:
-            profiles = [Profile.parse(p) for p in self._model_info_meas.profile]
-            graph_name = self._datasource.named_graphs.determine_graph_name(
-                profiles, [self._model_info_meas.modeling_authority_set]
-            )
-            for p in profiles:
-                self._datasource.named_graphs.add(p, graph_name)
-
             [
                 self._datasource.insert_triples(self._model_info_meas.to_triples(), pr)
                 for pr in self._to_graph(Profile.MEAS)
             ]
+
+    def _init_graphs_for_measurements(self):
+        # determine profiles in OP FullModel
+        profiles = [Profile.parse(p) for p in self._model_info_op.profile]
+        # determine graph name for these profiles
+        graph_name = self._datasource.named_graphs.determine_graph_name(
+            [p.profile for p in profiles],
+            [self._model_info_op.modeling_authority_set],
+        )
+        # add same graph name for above profiles
+        for p in profiles:
+            self._datasource.named_graphs.add(p, graph_name)
+
+        # do the same for MEAS FullModel if it exists
+        if self._model_info_meas is not None:
+            profiles = [Profile.parse(p) for p in self._model_info_meas.profile]
+            graph_name = self._datasource.named_graphs.determine_graph_name(
+                [p.profile for p in profiles],
+                [self._model_info_meas.modeling_authority_set],
+            )
+            for p in profiles:
+                self._datasource.named_graphs.add(p, graph_name)
 
     def _to_graph(self, profile: Profile) -> list[Profile | str]:
         to_graph: list[Profile | str] = [profile]

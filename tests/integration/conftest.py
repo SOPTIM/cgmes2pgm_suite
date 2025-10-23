@@ -26,10 +26,10 @@ from cgmes2pgm_suite.rdf_store import FusekiDockerContainer, FusekiServer
 def fuseki_server() -> Iterator[FusekiServer]:
     """Fixture to provide a Fuseki server instance."""
 
-    fuseki_container = FusekiDockerContainer()
+    fuseki_container = FusekiDockerContainer(port=3333)
     fuseki_container.start(keep_existing_container=False)
 
-    fuseki_url = "http://localhost:3030"
+    fuseki_url = "http://localhost:3333"
     server = FusekiServer(fuseki_url)
 
     if not server.ping():

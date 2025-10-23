@@ -66,16 +66,21 @@ def _run(
     _ensure_fuseki_dataset(config)
     if config.steps.upload_xml_files:
         _upload_files(config)
-    else:
-        # determine what data is located in which graph
+    elif config.dataset.split_profiles:
+        # determine what data is located in which graph, assuming profiles are split into multiple graphs.
+        # if profiles are not split, all data is in the default graph and no mapping is needed.
         config.dataset.populate_named_graph_mapping()
 
     if config.steps.measurement_simulation:
+        # put OP and MEAS profile into same graph
+        separate_models = False
         builder = MeasurementBuilder(
-            config.dataset, config.measurement_simulation, separate_models=False
+            config.dataset,
+            config.measurement_simulation,
+            separate_models=separate_models,
         )
         builder.build_from_sv()
-        _export_measurement_simulation(config)
+        _export_measurement_simulation(config, separate_models)
 
     extra_info, input_data = _convert_cgmes(config.dataset, config.converter_options)
 
@@ -178,29 +183,24 @@ def _convert_cgmes(ds, options):
     return extra_info, input_data
 
 
-def _export_measurement_simulation(config: SuiteConfiguration):
-    op_graphs = config.dataset.named_graphs.get(Profile.OP)
-    assert len(op_graphs) == 1, "There should be exactly one OP graph"
-    op_graph = list(op_graphs)[0]
-
-    meas_graphs = config.dataset.named_graphs.get(Profile.MEAS)
-    assert len(meas_graphs) == 1, "There should be exactly one MEAS graph"
-    meas_graph = list(meas_graphs)[0]
+def _export_measurement_simulation(config: SuiteConfiguration, separate_models: bool):
 
     rdfxml_export = GraphToXMLExport(
         config.dataset,
-        source_graph=op_graph,
+        source_graph=Profile.OP,
         target_path=os.path.join(config.output_folder, "op.xml"),
     )
     rdfxml_export.export()
 
-    if op_graph == meas_graph:
+    # if OP and MEAS are not build separately, then they are in the same graph (name)
+    # and exporting both separately is not needed
+    if not separate_models:
         logging.info("OP and MEAS graph are the same, op profile contains meas-profile")
         return
 
     rdfxml_export = GraphToXMLExport(
         config.dataset,
-        source_graph=meas_graph,
+        source_graph=Profile.MEAS,
         target_path=os.path.join(config.output_folder, "meas.xml"),
     )
     rdfxml_export.export()

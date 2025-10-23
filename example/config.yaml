@@ -1,16 +1,12 @@
 #
 # Example Configuration for `SuiteConfigReader`
 #
-Name: "dataset_name"
-OutputFolder: "../../out/dataset_name"
-XmlFileLocation: "../../data/conformity/dataset_name"
+Name: "MiniGrid"
+OutputFolder: "../out/MiniGridPynb"
+XmlFileLocation: "../tests/data/conformity/MiniGrid"
 
 DataSource:
-  BaseUrl: "http://localhost:3030/dataset_name"
-  Graphs:
-    OP: "/op" # Target graph for MeasurementSimulation
-    MEAS: "/meas" # Target graph for MeasurementSimulation
-    SV: "/sv" # Target graph for SV-Profile Export
+  BaseUrl: "http://localhost:3030/MiniGrid"
   CIM-Namespace: "http://iec.ch/TC57/CIM100#"
   # CIM-Namespace: "http://iec.ch/TC57/2013/CIM-schema-cim16#"
 
@@ -43,12 +39,11 @@ Converter:
 
   MeasurementSubstitutions:
     PowerFlowSigma:
-      # Sigma value is missing for a U measurement, then use the following values depending on the nominal voltage of the node
+      # Sigma value is missing for a P/Q measurement, then use the following values depending on the nominal voltage of the node
       SigmaU: 10 # kV
       DiscreteU:
         380.0: 20
         220.0: 15
-      # Sigma value is missing for a P/Q measurement, then use the following values depending on the nominal voltage of the node
       SigmaPQ: 10 # MW/MVar
       DiscretePQ:
         380.0: 20

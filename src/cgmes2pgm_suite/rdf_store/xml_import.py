@@ -243,7 +243,7 @@ class RdfXmlImport:
         full_models: list[CgmesFullModel] | None = None,
         drop_before_upload: bool = True,
         update_profiles: bool = True,  # TODO: check that profiles exists? prevent logging warnings of existing graph names !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ) -> None:
+    ) -> str:
         """
         Upload the parsed triples to the dataset.
         Args:
@@ -260,7 +260,7 @@ class RdfXmlImport:
         fm = full_models if full_models is not None else self.read_full_model()
         if len(fm) == 0:
             logging.warning("Skipping graphs without full models.")
-            return
+            return ""
 
         profiles = set()
         mass = set()
@@ -270,16 +270,18 @@ class RdfXmlImport:
 
         # get known profiles
         mas_profiles = [Profile.parse(p) for p in profiles]
-        mas_profiles = [p for p in mas_profiles if p != Profile.UNKNOWN]
+        mas_profiles = [p for p in mas_profiles if p.profile != Profile.UNKNOWN]
 
         if len(mas_profiles) == 0:
-            unknown = [p for p in profiles if Profile.parse(p) == Profile.UNKNOWN]
+            unknown = [
+                p for p in profiles if Profile.parse(p).profile == Profile.UNKNOWN
+            ]
             logging.warning(
                 f"Skipping unknown profile in the RDF data: {", ".join(unknown)}"
             )
-            return
+            return ""
 
-        profiles_str = ", ".join([str(p) for p in mas_profiles])
+        profiles_str = ", ".join([f"{str(p.profile)}{'[BD]' if p.boundary else ''}" for p in mas_profiles])
 
         if not to_profile_graph:
             if drop_before_upload:
@@ -287,11 +289,12 @@ class RdfXmlImport:
 
             logging.info(f"Uploading profile(s) {profiles_str} to default graph.")
             self._add_triples(self.target_graph)
+            return self.target_graph
         else:
 
             # determine one graph_name for all profiles in all FullModels
             graph_name = self.dataset.named_graphs.determine_graph_name(
-                mas_profiles, list(mass)
+                [p.profile for p in mas_profiles], list(mass)
             )
             if drop_before_upload:
                 self.dataset.drop_graph(graph_name)
@@ -301,3 +304,4 @@ class RdfXmlImport:
 
             logging.info(f"Uploading profile(s) {profiles_str} to graph: {graph_name}")
             self._add_triples(graph_name, reset_graph=True)
+            return graph_name
