@@ -20,12 +20,14 @@ Converter:
   # topoIslandName: "name" # convert only elements in a specific topological island
   sourcesFromSV: false # Add source from SV (cim:TopologicalIsland.AngleRefTopologicalNode)
   NetworkSplitting:
-    Enable: true
+    Enable: false
     AddSources: false # Add sources instead of loads
     ## only following branches
     Branches:
-      active: "BE-TR2_2" # Select set of substations
-      cut1: []
+      active: "cut1" # Select set of substations
+      cut1: [
+        "BE-TR2_2"
+      ]
     ## only branches between substations in following list and the rest of the network
     Substations:
       active: "cut1" # Select set of substations
