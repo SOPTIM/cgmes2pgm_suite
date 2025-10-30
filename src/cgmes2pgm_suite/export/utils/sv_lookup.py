@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from cgmes2pgm_converter.common import CgmesDataset
+from cgmes2pgm_converter.common import CgmesDataset, Profile
 
 
 class SvVoltageLookup:
@@ -27,12 +27,30 @@ class SvVoltageLookup:
     }
     """
 
+    _query_graph = """
+    SELECT DISTINCT ?node ?voltage ?angle
+    WHERE {
+        VALUES ?sv_graph { $SV_GRAPH }
+        GRAPH ?sv_graph {
+            ?sv cim:SvVoltage.TopologicalNode ?node;
+                cim:SvVoltage.v ?voltage;
+                cim:SvVoltage.angle ?angle.
+        }
+    }
+    """
+
     def __init__(self, datasource: CgmesDataset):
         self.datasource = datasource
         self._voltage_meas = self._get_voltage_meas()
 
     def _get_voltage_meas(self) -> dict:
-        df = self.datasource.query(self._query)
+        if self.datasource.split_profiles:
+            named_graphs = self.datasource.named_graphs
+            args = {"$SV_GRAPH": named_graphs.format_for_query(Profile.SV)}
+            q_g = self.datasource.format_query(self._query_graph, args)
+            df = self.datasource.query(q_g)
+        else:
+            df = self.datasource.query(self._query)
         return {
             str(row["node"]): (row["voltage"], row["angle"]) for _, row in df.iterrows()
         }
