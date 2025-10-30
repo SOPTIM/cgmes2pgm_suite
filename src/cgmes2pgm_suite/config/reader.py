@@ -22,11 +22,11 @@ from cgmes2pgm_converter.common import (
     ConverterOptions,
     DefaultSigma,
     IncompleteMeasurements,
+    LinkAsShortLineOptions,
     MeasSub,
     MeasurementSubstitutionOptions,
     NetworkSplittingOptions,
     PassiveNodeOptions,
-    Profile,
     QFromIOptions,
     SshSubstitutionOptions,
     UMeasurementSubstitutionOptions,
@@ -169,6 +169,7 @@ class SuiteConfigReader:
             sources_from_sv=converter_options.get("sourcesFromSV", False),
             network_splitting=self._read_network_splitting_options(),
             measurement_substitution=self._read_substitution_options(),
+            link_as_short_line=self._read_link_options(),
         )
 
     def _read_stes_parameter(self):
@@ -200,6 +201,17 @@ class SuiteConfigReader:
             add_sources=splitting.get("AddSources", False),
             cut_branches=split_branches,
             cut_substations=split_substations,
+        )
+
+    def _read_link_options(self):
+        converter_options = self._config.get("Converter", {})
+        link_as_short_line_config = converter_options.get("LinkAsShortLine", {})
+
+        return LinkAsShortLineOptions(
+            enable=link_as_short_line_config.get("Enable", False),
+            r=link_as_short_line_config.get("R", 0.01),
+            x=link_as_short_line_config.get("X", 0.01),
+            sigma_factor=link_as_short_line_config.get("SigmaFactor", 10),
         )
 
     def _read_substitution_options(self):
