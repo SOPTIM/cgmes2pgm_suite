@@ -209,9 +209,9 @@ class SuiteConfigReader:
 
         return LinkAsShortLineOptions(
             enable=link_as_short_line_config.get("Enable", False),
-            r=link_as_short_line_config.get("R", 0.01),
-            x=link_as_short_line_config.get("X", 0.01),
-            sigma_factor=link_as_short_line_config.get("SigmaFactor", 10),
+            r=link_as_short_line_config.get("R", LinkAsShortLineOptions.r),
+            x=link_as_short_line_config.get("X", LinkAsShortLineOptions.x),
+            sigma_factor=link_as_short_line_config.get("SigmaFactor", LinkAsShortLineOptions.sigma_factor),
         )
 
     def _read_substitution_options(self):
