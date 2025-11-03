@@ -161,7 +161,6 @@ class RdfXmlImport:
             self.base_iri + "#" if self.base_iri != "urn:uuid:" else self.base_iri
         )
         for i, item in enumerate(triple_list):
-
             if item.startswith(f"{TEMP_BASE_URI}#_"):
                 item = item.replace(f"{TEMP_BASE_URI}#_", base_iri)
 
@@ -277,11 +276,13 @@ class RdfXmlImport:
                 p for p in profiles if Profile.parse(p).profile == Profile.UNKNOWN
             ]
             logging.warning(
-                f"Skipping unknown profile in the RDF data: {", ".join(unknown)}"
+                f"Skipping unknown profile in the RDF data: {', '.join(unknown)}"
             )
             return ""
 
-        profiles_str = ", ".join([f"{str(p.profile)}{'[BD]' if p.boundary else ''}" for p in mas_profiles])
+        profiles_str = ", ".join(
+            [f"{str(p.profile)}{'[BD]' if p.boundary else ''}" for p in mas_profiles]
+        )
 
         if not to_profile_graph:
             if drop_before_upload:
@@ -291,7 +292,6 @@ class RdfXmlImport:
             self._add_triples(self.target_graph)
             return self.target_graph
         else:
-
             # determine one graph_name for all profiles in all FullModels
             graph_name = self.dataset.named_graphs.determine_graph_name(
                 [p.profile for p in mas_profiles], list(mass)
