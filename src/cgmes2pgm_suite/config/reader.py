@@ -36,10 +36,7 @@ from cgmes2pgm_suite.measurement_simulation import (
     MeasurementRangeSet,
     MeasurementSimulationConfiguration,
 )
-from cgmes2pgm_suite.state_estimation import (
-    PgmCalculationParameters,
-    StesOptions,
-)
+from cgmes2pgm_suite.state_estimation import PgmCalculationParameters, StesOptions
 
 from .config import LoggingConfiguration, Steps, SuiteConfiguration
 
@@ -211,7 +208,9 @@ class SuiteConfigReader:
             enable=link_as_short_line_config.get("Enable", False),
             r=link_as_short_line_config.get("R", LinkAsShortLineOptions.r),
             x=link_as_short_line_config.get("X", LinkAsShortLineOptions.x),
-            sigma_factor=link_as_short_line_config.get("SigmaFactor", LinkAsShortLineOptions.sigma_factor),
+            sigma_factor=link_as_short_line_config.get(
+                "SigmaFactor", LinkAsShortLineOptions.sigma_factor
+            ),
         )
 
     def _read_substitution_options(self):
@@ -297,7 +296,6 @@ class SuiteConfigReader:
         return None
 
     def _dict_to_snake_case(self, params: dict):
-
         def to_snake_case(exp):
             return re.sub(r"(?<!^)(?=[A-Z])", "_", exp).lower()
 

@@ -18,15 +18,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from cgmes2pgm_converter.common import (
-    CgmesDataset,
-    ConverterOptions,
-)
+from cgmes2pgm_converter.common import CgmesDataset, ConverterOptions
 
 from cgmes2pgm_suite.measurement_simulation import MeasurementSimulationConfiguration
-from cgmes2pgm_suite.state_estimation import (
-    StesOptions,
-)
+from cgmes2pgm_suite.state_estimation import StesOptions
 
 
 @dataclass

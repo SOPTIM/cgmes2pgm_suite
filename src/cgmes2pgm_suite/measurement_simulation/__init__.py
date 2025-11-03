@@ -24,7 +24,7 @@ from .meas_ranges import (
 )
 from .measurement_builder import (
     MeasurementBuilder,
-    ValueSourceBuilder,
     PowerMeasurementBuilder,
+    ValueSourceBuilder,
     VoltageMeasurementBuilder,
 )

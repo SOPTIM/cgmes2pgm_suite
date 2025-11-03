@@ -21,9 +21,7 @@ from cgmes2pgm_converter.common import CgmesDataset, Profile
 
 from cgmes2pgm_suite.config import MeasurementSimulationConfigReader
 from cgmes2pgm_suite.export import GraphToXMLExport, TextExport
-from cgmes2pgm_suite.measurement_simulation import (
-    MeasurementBuilder,
-)
+from cgmes2pgm_suite.measurement_simulation import MeasurementBuilder
 from cgmes2pgm_suite.rdf_store import FusekiServer, RdfXmlImport
 
 from .util.data import setup_dataset
@@ -89,9 +87,9 @@ def test_measurement_consistency(fuseki_server: FusekiServer, dataset_path):
     with open(f"{out_dir}/input_data_default.txt", encoding="utf-8") as f:
         content_default = f.read()
 
-    assert (
-        content_named == content_default
-    ), "Input data differs after re-import (see out directory for differences)."
+    assert content_named == content_default, (
+        "Input data differs after re-import (see out directory for differences)."
+    )
 
 
 def export_meas_from_named_graphs(out_dir, dataset: CgmesDataset):
