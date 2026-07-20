@@ -3,6 +3,18 @@
 `cgmes2pgm_suite` provides additional tools for `cgmes2pgm_converter` to integrate [PowerGridModel](https://github.com/PowerGridModel/power-grid-model) with the Common Grid Model Exchange Standard (CGMES).
 It focuses on performing the state estimation on CGMES datasets.
 
+## Project Status
+
+The SOPTIM PGM Converter is provided by SOPTIM AG.
+
+This repository is intentionally kept small and primarily serves demonstration, evaluation, and reproducibility purposes. 
+While SOPTIM AG actively develops solutions in the area of power system analysis and grid data integration, this repository is not intended to represent the full functionality, performance, or support offering of commercial SOPTIM products.
+
+The code is made available under the Apache-2.0 license. The availability of this repository does not imply any warranty, maintenance obligation, support commitment, or product roadmap by SOPTIM AG.
+
+For additional information please contact SOPTIM AG directly.
+
+
 ## Features
 
 - Start an Apache Jena Fuseki as docker container
@@ -115,20 +127,3 @@ This project includes third-party dependencies, which are licensed under their o
 This project includes code from [jena-fuseki-docker](https://repo1.maven.org/maven2/org/apache/jena/jena-fuseki-docker/)
 in the `src/cgmes2pgm_suite/resources/docker` directory, which is redistributed under the original Apache License 2.0.
 See the root‑level [`NOTICE`](./NOTICE) file for full attribution.
-
-## Commercial Support and Services
-
-For organizations requiring commercial support, professional maintenance, integration services,
-or custom extensions for this project, these services are available from **SOPTIM AG**.
-
-Please feel free to contact us via [powergridmodel@soptim.de](mailto:powergridmodel@soptim.de).
-
-## Contributing
-
-We welcome contributions to improve this project.
-Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and suggest improvements.
-
-## Code of Conduct
-
-This project adheres to a code of conduct adapted from the [Apache Foundation's Code of Conduct](https://www.apache.org/foundation/policies/conduct).
-We expect all contributors and users to follow these guidelines to ensure a welcoming and inclusive community.
