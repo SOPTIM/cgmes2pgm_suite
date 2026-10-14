@@ -22,7 +22,6 @@ class CacheEntry:
 
 
 class InputDataIdCache:
-
     def __init__(self, input_data: dict):
         self._input_data = input_data
         self._id_cache: dict[int, CacheEntry] = {}
@@ -51,8 +50,6 @@ class InputDataIdCache:
         measured_object = self.get_component(measured_object_id)
 
         match measured_terminal_type:
-            case MeasuredTerminalType.node:
-                return measured_object_id
             case (
                 MeasuredTerminalType.generator
                 | MeasuredTerminalType.load
